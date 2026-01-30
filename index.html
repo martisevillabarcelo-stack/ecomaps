@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <title>EcoMaps</title>
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Fuentes -->
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+
+  <!-- Iconos -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- QR (aunque ahora no lo uses, no molesta) -->
+  <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+
+<body>
+  <!-- LOGIN PANTALLA COMPLETA -->
+  <div id="loginPantalla">
+    <div class="login-box">
+      <h2>🌱 EcoMaps</h2>
+      <p>Inicia sesión para guardar tu progreso</p>
+
+      <input type="text" id="nombreUsuario" placeholder="Usuario">
+      <input type="password" id="passwordUsuario" placeholder="Contraseña">
+
+      <button onclick="loginUsuario()">Entrar / Registrarse</button>
+
+      <p class="nota">Tus datos se guardan solo en este dispositivo</p>
+    </div>
+  </div>
+
+  <header>
+    <h1><i class="fa-solid fa-leaf icono"></i> EcoMaps</h1>
+    <p>Recicla, gana puntos y cuida el planeta</p>
+  </header>
+
+  <!-- BARRA DE NAVEGACIÓN -->
+  <nav id="navegacion">
+    <button class="boton-nav activo" onclick="mostrarSeccion('inicio', event)">
+      <i class="fa-solid fa-house"></i> Inicio
+    </button>
+    <button class="boton-nav" onclick="mostrarSeccion('recompensas', event)">
+      <i class="fa-solid fa-gift"></i> Recompensas
+    </button>
+    <button class="boton-nav" onclick="mostrarSeccion('estadisticas', event)">
+      <i class="fa-solid fa-chart-line"></i> Estadísticas
+    </button>
+    <button class="boton-nav" onclick="mostrarSeccion('consejos', event)">
+      <i class="fa-solid fa-lightbulb"></i> Consejos
+    </button>
+  </nav>
+
+  <!-- SECCIÓN: INICIO (Mapa + Búsqueda + Impacto) -->
+  <div id="seccion-inicio" class="seccion-contenido">
+    <section>
+      <h2><i class="fa-solid fa-map-location-dot icono"></i> Mapa de contenedores</h2>
+      <iframe src="https://www.google.com/maps/d/embed?mid=1y0X6ZcjNvIwtqD8deps1PY-dCaHE3fM&ehbc=2E312F" width="100%"
+        height="450" style="border:0;" loading="lazy">
+      </iframe>
+    </section>
+
+    <section>
+      <h2><i class="fa-solid fa-magnifying-glass icono"></i> ¿Dónde tiro esto?</h2>
+      <input type="text" id="residuo" placeholder="Ej: botella, lata, móvil...">
+      <button onclick="buscarResiduo()">
+        <i class="fa-solid fa-recycle"></i> Buscar
+      </button>
+      <div id="resultado"></div>
+    </section>
+
+    <section>
+      <h2><i class="fa-solid fa-star icono"></i> Tu impacto</h2>
+      <p>🌱 CO₂ total ahorrado:</p>
+      <div id="puntuacion">0.00</div>
+    </section>
+  </div>
+
+  <!-- SECCIÓN: RECOMPENSAS -->
+  <div id="seccion-recompensas" class="seccion-contenido seccion-oculta">
+    <section id="recompensas-section">
+      <h2 class="titulo-recompensas">
+        <i class="fa-solid fa-gift"></i> Recompensas
+      </h2>
+      <div id="recompensas">
+        <div class="recompensa bloqueada">
+          <i class="fa-solid fa-mug-hot"></i>
+          <p>Café gratis</p>
+          <span>5 kg CO₂</span>
+        </div>
+        <div class="recompensa bloqueada">
+          <i class="fa-solid fa-ticket"></i>
+          <p>Entrada cultural</p>
+          <span>10 kg CO₂</span>
+        </div>
+        <div class="recompensa bloqueada">
+          <i class="fa-solid fa-tree"></i>
+          <p>Árbol plantado</p>
+          <span>20 kg CO₂</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- SECCIÓN: ESTADÍSTICAS -->
+  <div id="seccion-estadisticas" class="seccion-contenido seccion-oculta">
+    <section>
+      <h2><i class="fa-solid fa-chart-line icono"></i> Estadísticas</h2>
+      <p>Residuos reciclados: <span id="contador">0</span></p>
+    </section>
+
+    <section>
+      <h2><i class="fa-solid fa-trophy icono"></i> Retos semanales</h2>
+      <ul>
+        <li>♻️ Recicla 5 objetos</li>
+        <li>🌱 Ahorra 2 kg de CO₂</li>
+        <li>🗺️ Usa el mapa 3 veces</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2><i class="fa-solid fa-ranking-star icono"></i> Ranking de usuarios</h2>
+      <ol id="rankingUsuarios"></ol>
+    </section>
+  </div>
+
+  <!-- SECCIÓN: CONSEJOS -->
+  <div id="seccion-consejos" class="seccion-contenido seccion-oculta">
+    <section>
+      <h2><i class="fa-solid fa-lightbulb icono"></i> ¿Sabías que...?</h2>
+      <p id="curiosidad"></p>
+    </section>
+  </div>
+
+  <!-- TU JAVASCRIPT -->
+  <script src="app.js"></script>
+
+  <!-- JS INTERNO SOLO PARA CURIOSIDADES -->
+  <script>
+    const curiosidades = [
+      "Reciclar una lata de aluminio ahorra energía suficiente para usar una TV durante 3 horas.",
+      "El vidrio puede reciclarse infinitamente sin perder calidad.",
+      "Reciclar papel reduce la deforestación y ahorra agua.",
+      "El plástico reciclado puede convertirse en ropa o muebles.",
+      "Reciclar 1 kg de papel ahorra más de 1 kg de CO₂."
+    ];
+
+    function mostrarCuriosidad() {
+      const indice = Math.floor(Math.random() * curiosidades.length);
+      document.getElementById("curiosidad").textContent = curiosidades[indice];
+    }
+
+    mostrarCuriosidad();
+  </script>
+
+</body>
+
+</html>

@@ -1,0 +1,702 @@
+/* ===================================
+   RESET & BASE STYLES
+   =================================== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+  background-attachment: fixed;
+  color: #1a1a1a;
+  padding-bottom: 60px;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ===================================
+   HEADER - Modern & Sleek
+   =================================== */
+header {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+  backdrop-filter: blur(10px);
+  color: white;
+  padding: 40px 20px;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+header h1 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 2.8rem;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-bottom: 8px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+header p {
+  font-size: 1.05rem;
+  font-weight: 400;
+  opacity: 0.95;
+  letter-spacing: 0.3px;
+}
+
+/* ===================================
+   NAVIGATION - Premium Style
+   =================================== */
+#navegacion {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  padding: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 128px;
+  z-index: 999;
+  flex-wrap: wrap;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.boton-nav {
+  padding: 14px 28px;
+  border-radius: 16px;
+  border: 2px solid transparent;
+  background: white;
+  color: #059669;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.boton-nav::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+.boton-nav:hover::before {
+  left: 100%;
+}
+
+.boton-nav:hover {
+  background: #f0fdf4;
+  border-color: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(5, 150, 105, 0.15);
+}
+
+.boton-nav.activo {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border-color: #059669;
+  box-shadow: 0 8px 24px rgba(5, 150, 105, 0.3);
+}
+
+.boton-nav i {
+  font-size: 1.15rem;
+}
+
+/* ===================================
+   SECTIONS - Glassmorphism Cards
+   =================================== */
+.seccion-contenido {
+  animation: slideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.seccion-oculta {
+  display: none;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+section {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  margin: 30px auto;
+  padding: 35px;
+  width: 92%;
+  max-width: 1000px;
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+section:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.2);
+}
+
+section h2 {
+  font-family: 'Outfit', sans-serif;
+  color: #059669;
+  margin-bottom: 25px;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ===================================
+   MAP - Modern Embed
+   =================================== */
+iframe {
+  width: 100%;
+  height: 450px;
+  border-radius: 20px;
+  border: none;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s ease;
+}
+
+iframe:hover {
+  transform: scale(1.01);
+}
+
+/* ===================================
+   INPUTS & BUTTONS - Premium Design
+   =================================== */
+input {
+  width: calc(70% - 5px);
+  padding: 16px 20px;
+  border-radius: 16px;
+  border: 2px solid rgba(5, 150, 105, 0.2);
+  font-size: 1rem;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+input:focus {
+  border-color: #10b981;
+  background: white;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15);
+  transform: translateY(-2px);
+}
+
+button {
+  padding: 16px 32px;
+  margin-left: 10px;
+  border-radius: 16px;
+  border: none;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.5s;
+}
+
+button:hover::before {
+  left: 100%;
+}
+
+button:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 12px 32px rgba(16, 185, 129, 0.4);
+}
+
+button:active {
+  transform: translateY(-1px) scale(0.98);
+}
+
+/* ===================================
+   RESULT BOX - Enhanced Style
+   =================================== */
+#resultado {
+  margin-top: 25px;
+  font-size: 1.15rem;
+  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+  padding: 24px;
+  border-radius: 18px;
+  border-left: 5px solid #10b981;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.1);
+  font-weight: 500;
+  white-space: pre-line;
+  line-height: 1.7;
+}
+
+/* ===================================
+   CO2 SCORE - Eye-catching Display
+   =================================== */
+#puntuacion {
+  font-weight: 800;
+  font-size: 3.5rem;
+  font-family: 'Outfit', sans-serif;
+  background: linear-gradient(135deg, #10b981, #059669);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-top: 15px;
+  text-shadow: 0 4px 20px rgba(16, 185, 129, 0.2);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* ===================================
+   REWARDS GRID - Modern Cards
+   =================================== */
+#recompensas-section {
+  text-align: center;
+}
+
+.titulo-recompensas {
+  font-family: 'Outfit', sans-serif;
+  font-size: 2.2rem;
+  margin-bottom: 30px;
+  color: #059669;
+  font-weight: 700;
+}
+
+#recompensas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 25px;
+  margin-top: 20px;
+}
+
+.recompensa {
+  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+  border-radius: 20px;
+  padding: 35px 25px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid rgba(16, 185, 129, 0.1);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.recompensa::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.1), transparent);
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+.recompensa:hover::before {
+  opacity: 1;
+}
+
+.recompensa i {
+  font-size: 3.5rem;
+  color: #10b981;
+  margin-bottom: 15px;
+  display: block;
+  transition: transform 0.4s ease;
+}
+
+.recompensa:hover i {
+  transform: scale(1.2) rotate(10deg);
+}
+
+.recompensa p {
+  font-weight: 600;
+  font-size: 1.15rem;
+  margin: 12px 0;
+  color: #1a1a1a;
+}
+
+.recompensa span {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 8px 18px;
+  background: white;
+  border-radius: 12px;
+  font-weight: 700;
+  color: #059669;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.recompensa:hover {
+  transform: translateY(-10px) scale(1.03);
+  box-shadow: 0 20px 50px rgba(16, 185, 129, 0.25);
+  border-color: #10b981;
+}
+
+.recompensa.bloqueada {
+  opacity: 0.5;
+  filter: grayscale(0.8);
+  pointer-events: auto;
+}
+
+.recompensa.bloqueada:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+/* ===================================
+   LOGIN SCREEN - Premium Design
+   =================================== */
+#loginPantalla {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(10px);
+}
+
+.login-box {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  padding: 50px 40px;
+  border-radius: 28px;
+  width: 90%;
+  max-width: 420px;
+  text-align: center;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  animation: fadeInScale 0.5s ease;
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.login-box h2 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 2.2rem;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 800;
+}
+
+.login-box>p {
+  margin-bottom: 25px;
+  color: #666;
+  font-size: 0.95rem;
+}
+
+.login-box input {
+  width: 100%;
+  margin: 12px 0;
+  padding: 18px 22px;
+  border-radius: 16px;
+  border: 2px solid rgba(5, 150, 105, 0.2);
+  font-size: 1rem;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.login-box input:focus {
+  border-color: #10b981;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15);
+}
+
+.login-box button {
+  width: 100%;
+  margin-top: 20px;
+  padding: 18px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border: none;
+  border-radius: 16px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+}
+
+.login-box button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 40px rgba(16, 185, 129, 0.4);
+}
+
+.nota {
+  font-size: 0.85rem;
+  margin-top: 20px;
+  color: #888;
+  font-weight: 400;
+}
+
+/* ===================================
+   RANKING - Podium Style
+   =================================== */
+#rankingUsuarios {
+  list-style: none;
+  padding: 0;
+  margin-top: 20px;
+}
+
+#rankingUsuarios li {
+  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+  margin-bottom: 15px;
+  padding: 18px 24px;
+  border-radius: 16px;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+#rankingUsuarios li:hover {
+  transform: translateX(8px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+  border-color: #10b981;
+}
+
+#rankingUsuarios li span {
+  color: #059669;
+}
+
+#rankingUsuarios li:first-child {
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  box-shadow: 0 10px 35px rgba(255, 215, 0, 0.3);
+  font-size: 1.1rem;
+  padding: 22px 28px;
+}
+
+#rankingUsuarios li:first-child span {
+  color: #854d0e;
+}
+
+#rankingUsuarios li:nth-child(2) {
+  background: linear-gradient(135deg, #e5e7eb, #f3f4f6);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.15);
+}
+
+#rankingUsuarios li:nth-child(2) span {
+  color: #4b5563;
+}
+
+#rankingUsuarios li:nth-child(3) {
+  background: linear-gradient(135deg, #fbbf24, #fcd34d);
+  box-shadow: 0 8px 28px rgba(251, 191, 36, 0.2);
+}
+
+#rankingUsuarios li:nth-child(3) span {
+  color: #78350f;
+}
+
+/* ===================================
+   ICON ANIMATIONS
+   =================================== */
+.icono {
+  display: inline-block;
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* ===================================
+   STATS & CHALLENGES
+   =================================== */
+section p {
+  line-height: 1.8;
+  color: #374151;
+  font-size: 1.05rem;
+}
+
+section ul {
+  list-style: none;
+  padding: 0;
+  margin-top: 20px;
+}
+
+section ul li {
+  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+  padding: 18px 24px;
+  margin-bottom: 12px;
+  border-radius: 14px;
+  border-left: 4px solid #10b981;
+  font-size: 1.05rem;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+}
+
+section ul li:hover {
+  transform: translateX(10px);
+  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.15);
+}
+
+#contador {
+  font-weight: 700;
+  color: #10b981;
+  font-size: 1.3rem;
+}
+
+/* ===================================
+   CURIOSITY BOX
+   =================================== */
+#curiosidad {
+  background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+  padding: 30px;
+  border-radius: 18px;
+  font-size: 1.15rem;
+  line-height: 1.9;
+  font-style: italic;
+  color: #1f2937;
+  border-left: 5px solid #10b981;
+  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.1);
+  margin-top: 20px;
+  font-weight: 500;
+}
+
+/* ===================================
+   RESPONSIVE DESIGN
+   =================================== */
+@media (max-width: 768px) {
+  header h1 {
+    font-size: 2.2rem;
+  }
+
+  header {
+    padding: 30px 15px;
+  }
+
+  section {
+    padding: 25px 20px;
+    width: 95%;
+  }
+
+  section h2 {
+    font-size: 1.6rem;
+  }
+
+  #navegacion {
+    padding: 15px 10px;
+    gap: 8px;
+  }
+
+  .boton-nav {
+    padding: 12px 18px;
+    font-size: 0.9rem;
+  }
+
+  input {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+
+  button {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  #puntuacion {
+    font-size: 2.8rem;
+  }
+
+  #recompensas {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===================================
+   SMOOTH SCROLLING
+   =================================== */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ===================================
+   SELECTION STYLING
+   =================================== */
+::selection {
+  background: #10b981;
+  color: white;
+}
+
+::-moz-selection {
+  background: #10b981;
+  color: white;
+}
