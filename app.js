@@ -193,9 +193,35 @@ function actualizarRanking() {
 
   ranking.forEach((u, i) => {
     const li = document.createElement("li");
-    li.innerText = `${i + 1}. ${u.nombre} — ${u.co2.toFixed(2)} kg CO₂`;
+    li.innerHTML = `<span>${i + 1}. ${u.nombre}</span> <span>${u.co2.toFixed(2)} kg CO₂</span>`;
     lista.appendChild(li);
   });
+}
+
+/**********************
+ * NAVEGACIÓN
+ **********************/
+function mostrarSeccion(seccion, event) {
+  // Ocultar todas las secciones
+  const secciones = document.querySelectorAll('.seccion-contenido');
+  secciones.forEach(s => s.classList.add('seccion-oculta'));
+
+  // Mostrar la sección seleccionada
+  const seccionSeleccionada = document.getElementById('seccion-' + seccion);
+  if (seccionSeleccionada) {
+    seccionSeleccionada.classList.remove('seccion-oculta');
+  }
+
+  // Actualizar botones (quitar clase activo de todos y ponerla al clicado)
+  const botones = document.querySelectorAll('.boton-nav');
+  botones.forEach(b => b.classList.remove('activo'));
+
+  if (event) {
+    event.currentTarget.classList.add('activo');
+  } else {
+    // Si no hay evento (ej: carga inicial), buscar el botón por texto o atributo
+    // En este caso, el HTML ya viene con el de 'Inicio' activo por defecto.
+  }
 }
 
 /**********************
