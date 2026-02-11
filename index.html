@@ -30,6 +30,24 @@
       <input type="text" id="nombreUsuario" placeholder="Usuario">
       <input type="password" id="passwordUsuario" placeholder="Contraseña">
 
+      <div class="centro-selector">
+        <label for="centroEducativo"><i class="fa-solid fa-school"></i> Centro Educativo:</label>
+        <select id="centroEducativo">
+          <option value="">-- Selecciona tu centro --</option>
+          <option value="IES Francisco de Goya">IES Francisco de Goya</option>
+          <option value="IES Eduardo Linares Lumeras">IES Eduardo Linares Lumeras</option>
+          <option value="IES Vega del Táder">IES Vega del Táder</option>
+          <option value="IES Cañada de las Eras">IES Cañada de las Eras</option>
+          <option value="CEIP Nuestra Señora de la Consolación">CEIP Nuestra Señora de la Consolación</option>
+          <option value="CEIP Maestro José Alcolea Lacal">CEIP Maestro José Alcolea Lacal</option>
+          <option value="CEIP Salzillo">CEIP Salzillo</option>
+          <option value="CEIP Gregorio Miñano">CEIP Gregorio Miñano</option>
+          <option value="Colegio La Milagrosa">Colegio La Milagrosa</option>
+          <option value="Colegio El Taller">Colegio El Taller</option>
+          <option value="Otro centro">Otro centro</option>
+        </select>
+      </div>
+
       <button onclick="loginUsuario()">Entrar / Registrarse</button>
 
       <p class="nota">Tus datos se guardan solo en este dispositivo</p>
@@ -46,40 +64,169 @@
     <button class="boton-nav activo" onclick="mostrarSeccion('inicio', event)">
       <i class="fa-solid fa-house"></i> Inicio
     </button>
-    <button class="boton-nav" onclick="mostrarSeccion('recompensas', event)">
-      <i class="fa-solid fa-gift"></i> Recompensas
+    <button class="boton-nav" onclick="mostrarSeccion('comunidad', event)">
+      <i class="fa-solid fa-users"></i> Comunidad
     </button>
     <button class="boton-nav" onclick="mostrarSeccion('estadisticas', event)">
       <i class="fa-solid fa-chart-line"></i> Estadísticas
     </button>
-    <button class="boton-nav" onclick="mostrarSeccion('consejos', event)">
-      <i class="fa-solid fa-lightbulb"></i> Consejos
+    <button class="boton-nav" onclick="mostrarSeccion('recompensas', event)">
+      <i class="fa-solid fa-gift"></i> Recompensas
+    </button>
+    <button class="boton-nav" onclick="mostrarSeccion('perfil', event)">
+      <i class="fa-solid fa-user-circle"></i> Mi Perfil
     </button>
   </nav>
 
-  <!-- SECCIÓN: INICIO (Mapa + Búsqueda + Impacto) -->
+  <!-- SECCIÓN: INICIO - Acciones principales -->
   <div id="seccion-inicio" class="seccion-contenido">
-    <section>
+
+    <!-- Resumen rápido del usuario -->
+    <section class="resumen-rapido-section">
+      <div class="resumen-rapido-grid">
+        <div class="resumen-item">
+          <i class="fa-solid fa-leaf"></i>
+          <div class="resumen-data">
+            <span id="puntuacion">0.00</span>
+            <small>kg CO₂ ahorrado</small>
+          </div>
+        </div>
+        <div class="resumen-item">
+          <i class="fa-solid fa-fire"></i>
+          <div class="resumen-data">
+            <span id="racha-valor">0</span>
+            <small>días de racha</small>
+          </div>
+        </div>
+        <div class="resumen-item">
+          <i class="fa-solid fa-trophy"></i>
+          <div class="resumen-data">
+            <span id="nivel-nombre-mini">Semilla</span>
+            <small>tu nivel actual</small>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Mapa de contenedores con ubicación integrada -->
+    <section class="mapa-section">
       <h2><i class="fa-solid fa-map-location-dot icono"></i> Mapa de contenedores</h2>
+
+      <!-- Mini ubicación integrada -->
+      <div class="ubicacion-mini">
+        <div class="ubicacion-mini-info">
+          <i class="fa-solid fa-location-dot"></i>
+          <span id="direccion-actual">Obteniendo ubicación...</span>
+        </div>
+        <button class="btn-ubicacion-mini" onclick="obtenerUbicacion()">
+          <i class="fa-solid fa-location-crosshairs"></i>
+        </button>
+      </div>
+      <div class="ubicacion-coords-mini" id="ubicacion-coords-mini" style="display:none;">
+        <span id="lat-value">--</span>, <span id="lng-value">--</span>
+      </div>
+
       <iframe src="https://www.google.com/maps/d/embed?mid=1y0X6ZcjNvIwtqD8deps1PY-dCaHE3fM&ehbc=2E312F" width="100%"
-        height="450" style="border:0;" loading="lazy">
+        height="400" style="border:0; border-radius: 16px;" loading="lazy">
       </iframe>
     </section>
 
-    <section>
-      <h2><i class="fa-solid fa-magnifying-glass icono"></i> ¿Dónde tiro esto?</h2>
-      <input type="text" id="residuo" placeholder="Ej: botella, lata, móvil...">
-      <button onclick="buscarResiduo()">
-        <i class="fa-solid fa-recycle"></i> Buscar
+    <!-- Escanear producto -->
+    <section class="accion-section">
+      <h2><i class="fa-solid fa-barcode icono"></i> Escanear Producto</h2>
+      <p>Escanea el código de barras para registrar tu reciclaje y ganar puntos.</p>
+      <div id="reader-container" class="seccion-oculta" style="width: 100%; max-width: 500px; margin: 20px auto;">
+        <div id="reader"></div>
+      </div>
+      <button id="btn-escanear" onclick="toggleEscaneo()" class="btn-accion-principal">
+        <i class="fa-solid fa-camera"></i> Iniciar Escáner
       </button>
+      <div id="resultado-escaneo"></div>
+    </section>
+
+    <!-- Buscar residuo -->
+    <section class="accion-section">
+      <h2><i class="fa-solid fa-magnifying-glass icono"></i> ¿Dónde tiro esto?</h2>
+      <p class="nota-informativa">Consulta el contenedor correcto. (No suma puntos)</p>
+      <div class="buscar-form">
+        <input type="text" id="residuo" placeholder="Ej: botella, lata, móvil...">
+        <button onclick="buscarResiduo()">
+          <i class="fa-solid fa-recycle"></i> Buscar
+        </button>
+      </div>
       <div id="resultado"></div>
     </section>
 
-    <section>
-      <h2><i class="fa-solid fa-star icono"></i> Tu impacto</h2>
-      <p>🌱 CO₂ total ahorrado:</p>
-      <div id="puntuacion">0.00</div>
+    <!-- Consejos rápidos -->
+    <section class="consejos-rapidos-section">
+      <h2><i class="fa-solid fa-lightbulb icono"></i> Consejo del día</h2>
+      <div class="consejo-card">
+        <p id="curiosidad-inicio"></p>
+      </div>
     </section>
+
+  </div>
+
+  <!-- SECCIÓN: COMUNIDAD - Estadísticas globales y rankings -->
+  <div id="seccion-comunidad" class="seccion-contenido seccion-oculta">
+
+    <!-- Estadísticas globales de Molina de Segura -->
+    <section class="molina-stats-section">
+      <h2><i class="fa-solid fa-city icono"></i> Molina de Segura - Impacto Total</h2>
+      <p class="molina-subtitulo">Lo que hemos logrado juntos como comunidad 🌍</p>
+      <div class="molina-stats-grid">
+        <div class="molina-stat-card">
+          <i class="fa-solid fa-users"></i>
+          <span class="molina-stat-num" id="total-usuarios">0</span>
+          <span class="molina-stat-label">Usuarios activos</span>
+        </div>
+        <div class="molina-stat-card destacado">
+          <i class="fa-solid fa-leaf"></i>
+          <span class="molina-stat-num" id="co2-global">0.00</span>
+          <span class="molina-stat-label">Kg CO₂ ahorrados</span>
+        </div>
+        <div class="molina-stat-card">
+          <i class="fa-solid fa-recycle"></i>
+          <span class="molina-stat-num" id="objetos-global">0</span>
+          <span class="molina-stat-label">Objetos reciclados</span>
+        </div>
+      </div>
+      <div class="molina-equivalencias">
+        <h3><i class="fa-solid fa-equals"></i> Equivale a...</h3>
+        <div class="molina-equiv-grid">
+          <div class="molina-equiv-item">
+            <i class="fa-solid fa-tree"></i>
+            <span id="equiv-arboles">0</span>
+            <p>árboles salvados</p>
+          </div>
+          <div class="molina-equiv-item">
+            <i class="fa-solid fa-car"></i>
+            <span id="equiv-km-global">0</span>
+            <p>km en coche evitados</p>
+          </div>
+          <div class="molina-equiv-item">
+            <i class="fa-solid fa-bolt"></i>
+            <span id="equiv-energia">0</span>
+            <p>kWh de energía</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ranking de Centros Educativos -->
+    <section class="ranking-centros-section">
+      <h2><i class="fa-solid fa-school icono"></i> Ranking de Centros Educativos</h2>
+      <p class="ranking-centros-subtitulo">¿Qué centro recicla más en Molina de Segura? 🏆</p>
+      <ol id="rankingCentros"></ol>
+    </section>
+
+    <!-- Ranking de usuarios -->
+    <section class="ranking-usuarios-section">
+      <h2><i class="fa-solid fa-ranking-star icono"></i> Top Recicladores</h2>
+      <p class="ranking-subtitulo">Los usuarios más comprometidos con el medio ambiente 🌿</p>
+      <ol id="rankingUsuarios"></ol>
+    </section>
+
   </div>
 
   <!-- SECCIÓN: RECOMPENSAS -->
@@ -108,34 +255,339 @@
     </section>
   </div>
 
-  <!-- SECCIÓN: ESTADÍSTICAS -->
+  <!-- SECCIÓN: ESTADÍSTICAS - Solo estadísticas personales -->
   <div id="seccion-estadisticas" class="seccion-contenido seccion-oculta">
-    <section>
-      <h2><i class="fa-solid fa-chart-line icono"></i> Estadísticas</h2>
-      <p>Residuos reciclados: <span id="contador">0</span></p>
+
+    <!-- Resumen principal -->
+    <section class="stats-hero-section">
+      <h2><i class="fa-solid fa-chart-line icono"></i> Tus Estadísticas Personales</h2>
+      <div id="stats-resumen-grid">
+        <div class="stat-resumen-card">
+          <i class="fa-solid fa-recycle"></i>
+          <span class="stat-num" id="contador">0</span>
+          <span class="stat-label">Objetos reciclados</span>
+        </div>
+        <div class="stat-resumen-card destacado">
+          <i class="fa-solid fa-leaf"></i>
+          <span class="stat-num" id="co2-total-num">0.00</span>
+          <span class="stat-label">Kg CO₂ ahorrados</span>
+        </div>
+        <div class="stat-resumen-card">
+          <i class="fa-solid fa-fire"></i>
+          <span class="stat-num" id="racha-stats">0</span>
+          <span class="stat-label">Días de racha</span>
+        </div>
+      </div>
     </section>
 
-    <section>
-      <h2><i class="fa-solid fa-trophy icono"></i> Retos semanales</h2>
-      <ul>
-        <li>♻️ Recicla 5 objetos</li>
-        <li>🌱 Ahorra 2 kg de CO₂</li>
-        <li>🗺️ Usa el mapa 3 veces</li>
+    <!-- Nivel y progreso -->
+    <section class="nivel-section">
+      <h2><i class="fa-solid fa-arrow-up-right-dots icono"></i> Tu Progreso</h2>
+      <div class="nivel-contenedor">
+        <div class="nivel-info">
+          <span id="nivel-nombre">Nivel: Semilla</span>
+          <span id="nivel-porcentaje">0%</span>
+        </div>
+        <div class="barra-progreso-bg">
+          <div id="barra-progreso-fill"></div>
+        </div>
+        <p class="nota-nivel">¡Ahorra más CO₂ para subir de nivel!</p>
+      </div>
+    </section>
+
+    <!-- Reparto por materiales -->
+    <section class="materiales-section">
+      <h2><i class="fa-solid fa-chart-pie icono"></i> Reparto por materiales</h2>
+      <div id="materiales-breakdown">
+        <div class="material-bar-item">
+          <div class="material-label"><span>🟡 Plástico</span> <span id="perc-plastico">0%</span></div>
+          <div class="bar-bg">
+            <div id="bar-plastico" class="bar-fill yellow" style="width: 0%"></div>
+          </div>
+        </div>
+        <div class="material-bar-item">
+          <div class="material-label"><span>🔵 Papel</span> <span id="perc-papel">0%</span></div>
+          <div class="bar-bg">
+            <div id="bar-papel" class="bar-fill blue" style="width: 0%"></div>
+          </div>
+        </div>
+        <div class="material-bar-item">
+          <div class="material-label"><span>🟢 Vidrio</span> <span id="perc-vidrio">0%</span></div>
+          <div class="bar-bg">
+            <div id="bar-vidrio" class="bar-fill green" style="width: 0%"></div>
+          </div>
+        </div>
+        <div class="material-bar-item">
+          <div class="material-label"><span>🟤 Orgánico/Otros</span> <span id="perc-otros">0%</span></div>
+          <div class="bar-bg">
+            <div id="bar-otros" class="bar-fill brown" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Equivalencias personales -->
+    <section id="equivalencias-contedor">
+      <h2><i class="fa-solid fa-scale-balanced icono"></i> ¿Qué supone tu ahorro?</h2>
+      <div class="equivalencias-grid">
+        <div class="equiv-item">
+          <i class="fa-solid fa-car"></i>
+          <span id="equiv-km">0.0 km</span>
+          <p>en coche evitados</p>
+        </div>
+        <div class="equiv-item">
+          <i class="fa-solid fa-lightbulb"></i>
+          <span id="equiv-horas">0h</span>
+          <p>de luz ahorrada</p>
+        </div>
+        <div class="equiv-item">
+          <i class="fa-solid fa-shower"></i>
+          <span id="equiv-duchas">0</span>
+          <p>duchas de ahorro</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Actividad reciente -->
+    <section id="historial-contenedor">
+      <h2><i class="fa-solid fa-clock-rotate-left icono"></i> Actividad reciente</h2>
+      <ul id="lista-historial">
+        <li class="vacio">Aún no has reciclado nada hoy</li>
       </ul>
     </section>
 
-    <section>
-      <h2><i class="fa-solid fa-ranking-star icono"></i> Ranking de usuarios</h2>
-      <ol id="rankingUsuarios"></ol>
+    <!-- Logros -->
+    <section class="logros-section">
+      <h2><i class="fa-solid fa-medal icono"></i> Tus Logros</h2>
+      <div id="logros-grid">
+        <div class="logro-item bloqueado" id="logro-1">
+          <i class="fa-solid fa-seedling"></i>
+          <p>Principiante Eco</p>
+          <span>Primer reciclaje</span>
+        </div>
+        <div class="logro-item bloqueado" id="logro-2">
+          <i class="fa-solid fa-fire"></i>
+          <p>Fuego Verde</p>
+          <span>3 días de racha</span>
+        </div>
+        <div class="logro-item bloqueado" id="logro-3">
+          <i class="fa-solid fa-trash-arrow-up"></i>
+          <p>Reciclador Pro</p>
+          <span>20 objetos</span>
+        </div>
+        <div class="logro-item bloqueado" id="logro-4">
+          <i class="fa-solid fa-earth-europe"></i>
+          <p>Guardián CO2</p>
+          <span>10 kg ahorrados</span>
+        </div>
+      </div>
     </section>
+
+    <!-- Retos semanales -->
+    <section class="retos-section">
+      <h2><i class="fa-solid fa-trophy icono"></i> Retos semanales</h2>
+      <div class="retos-grid">
+        <div class="reto-item" id="reto-1">
+          <div class="reto-icono">♻️</div>
+          <div class="reto-info">
+            <p>Recicla 5 objetos</p>
+            <div class="reto-progreso-bg">
+              <div class="reto-progreso-fill" id="reto-1-progreso"></div>
+            </div>
+            <small id="reto-1-texto">0/5 objetos</small>
+          </div>
+        </div>
+        <div class="reto-item" id="reto-2">
+          <div class="reto-icono">🌱</div>
+          <div class="reto-info">
+            <p>Ahorra 2 kg de CO₂</p>
+            <div class="reto-progreso-bg">
+              <div class="reto-progreso-fill" id="reto-2-progreso"></div>
+            </div>
+            <small id="reto-2-texto">0/2 kg</small>
+          </div>
+        </div>
+        <div class="reto-item" id="reto-3">
+          <div class="reto-icono">🔥</div>
+          <div class="reto-info">
+            <p>Mantén 3 días de racha</p>
+            <div class="reto-progreso-bg">
+              <div class="reto-progreso-fill" id="reto-3-progreso"></div>
+            </div>
+            <small id="reto-3-texto">0/3 días</small>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </div>
 
-  <!-- SECCIÓN: CONSEJOS -->
-  <div id="seccion-consejos" class="seccion-contenido seccion-oculta">
-    <section>
-      <h2><i class="fa-solid fa-lightbulb icono"></i> ¿Sabías que...?</h2>
-      <p id="curiosidad"></p>
+  <!-- SECCIÓN: RECOMPENSAS - Mejorada -->
+  <div id="seccion-recompensas" class="seccion-contenido seccion-oculta">
+
+    <section id="recompensas-section">
+      <h2 class="titulo-recompensas">
+        <i class="fa-solid fa-gift"></i> Recompensas Disponibles
+      </h2>
+      <p class="recompensas-subtitulo">Canjea tus puntos por premios reales 🎁</p>
+      <div id="recompensas">
+        <div class="recompensa bloqueada">
+          <div class="recompensa-badge">5 kg</div>
+          <i class="fa-solid fa-mug-hot"></i>
+          <p>Café gratis</p>
+          <span>5 kg CO₂</span>
+        </div>
+        <div class="recompensa bloqueada">
+          <div class="recompensa-badge">10 kg</div>
+          <i class="fa-solid fa-ticket"></i>
+          <p>Entrada cultural</p>
+          <span>10 kg CO₂</span>
+        </div>
+        <div class="recompensa bloqueada">
+          <div class="recompensa-badge">20 kg</div>
+          <i class="fa-solid fa-tree"></i>
+          <p>Árbol plantado</p>
+          <span>20 kg CO₂</span>
+        </div>
+        <div class="recompensa bloqueada">
+          <div class="recompensa-badge">50 kg</div>
+          <i class="fa-solid fa-shirt"></i>
+          <p>Camiseta EcoMaps</p>
+          <span>50 kg CO₂</span>
+        </div>
+      </div>
     </section>
+
+    <!-- Tu progreso hacia recompensas -->
+    <section class="progreso-recompensas-section">
+      <h2><i class="fa-solid fa-bullseye icono"></i> Tu progreso</h2>
+      <div class="progreso-recompensa-card">
+        <p>Tienes <strong id="co2-recompensas">0.00</strong> kg de CO₂ ahorrado</p>
+        <div class="proxima-recompensa">
+          <span>Próxima recompensa:</span>
+          <strong id="proxima-recompensa-nombre">Café gratis</strong>
+          <div class="barra-progreso-bg">
+            <div id="barra-recompensa-fill"></div>
+          </div>
+          <small id="falta-recompensa">Te faltan 5 kg</small>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- SECCIÓN: MI PERFIL -->
+  <div id="seccion-perfil" class="seccion-contenido seccion-oculta">
+
+    <!-- Tarjeta de perfil -->
+    <section class="perfil-hero-section">
+      <div class="perfil-card">
+        <div class="perfil-avatar">
+          <i class="fa-solid fa-user-circle"></i>
+        </div>
+        <div class="perfil-info">
+          <h2 id="perfil-nombre">Usuario</h2>
+          <div class="perfil-centro">
+            <i class="fa-solid fa-school"></i>
+            <span id="perfil-centro">Sin centro asignado</span>
+          </div>
+          <div class="perfil-nivel-badge" id="perfil-nivel-badge">
+            🌱 Semilla
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Estadísticas del perfil -->
+    <section class="perfil-stats-section">
+      <h2><i class="fa-solid fa-chart-simple icono"></i> Resumen de tu cuenta</h2>
+      <div class="perfil-stats-grid">
+        <div class="perfil-stat">
+          <i class="fa-solid fa-leaf"></i>
+          <span id="perfil-co2">0.00</span>
+          <small>kg CO₂ ahorrado</small>
+        </div>
+        <div class="perfil-stat">
+          <i class="fa-solid fa-recycle"></i>
+          <span id="perfil-objetos">0</span>
+          <small>objetos reciclados</small>
+        </div>
+        <div class="perfil-stat">
+          <i class="fa-solid fa-fire"></i>
+          <span id="perfil-racha">0</span>
+          <small>días de racha</small>
+        </div>
+        <div class="perfil-stat">
+          <i class="fa-solid fa-medal"></i>
+          <span id="perfil-logros">0</span>
+          <small>logros desbloqueados</small>
+        </div>
+      </div>
+    </section>
+
+    <!-- Información del centro -->
+    <section class="centro-info-section">
+      <h2><i class="fa-solid fa-school icono"></i> Tu Centro Educativo</h2>
+      <div class="centro-info-card">
+        <div class="centro-nombre-grande">
+          <i class="fa-solid fa-building-columns"></i>
+          <span id="centro-nombre-perfil">Sin centro</span>
+        </div>
+        <div class="centro-posicion-info">
+          <span>Posición en ranking:</span>
+          <strong id="centro-posicion-actual">#-</strong>
+        </div>
+        <div class="centro-stats-mini">
+          <div>
+            <i class="fa-solid fa-users"></i>
+            <span id="centro-usuarios-count">0</span> compañeros
+          </div>
+          <div>
+            <i class="fa-solid fa-leaf"></i>
+            <span id="centro-co2-total">0</span> kg CO₂ del centro
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Consejos y ODS -->
+    <section class="info-section">
+      <h2><i class="fa-solid fa-lightbulb icono"></i> ¿Sabías que...?</h2>
+      <div class="consejo-card">
+        <p id="curiosidad"></p>
+      </div>
+    </section>
+
+    <section class="ods-section">
+      <h2><i class="fa-solid fa-earth-americas icono"></i> Nuestra misión con los ODS</h2>
+      <p>EcoMaps contribuye directamente a los Objetivos de Desarrollo Sostenible de la ONU:</p>
+
+      <div class="ods-grid">
+        <div class="ods-card ods-11">
+          <div class="ods-number">11</div>
+          <h3>Ciudades Sostenibles</h3>
+          <p>"Transformamos barrios en ecosistemas limpios facilitando el acceso al reciclaje."</p>
+        </div>
+        <div class="ods-card ods-12">
+          <div class="ods-number">12</div>
+          <h3>Consumo Responsable</h3>
+          <p>"Toda acción de reciclaje es una victoria contra la sobreproducción de residuos."</p>
+        </div>
+        <div class="ods-card ods-13">
+          <div class="ods-number">13</div>
+          <h3>Acción por el Clima</h3>
+          <p>"Tu ahorro de CO₂ es un respiro directo para la atmósfera de nuestro planeta."</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cerrar sesión -->
+    <section class="logout-section">
+      <button class="btn-logout" onclick="cerrarSesion()">
+        <i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión
+      </button>
+    </section>
+
   </div>
 
   <!-- TU JAVASCRIPT -->

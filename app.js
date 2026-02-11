@@ -4,6 +4,13 @@
 let usuario = null;
 let co2Total = 0;
 let contadorResiduos = 0;
+let rachaDiaria = 0;
+let ultimaFechaReciclaje = null;
+let historialActividad = [];
+let logrosDesbloqueados = [];
+let materialesStats = { plastico: 0, papel: 0, vidrio: 0, organico: 0, total: 0 };
+let centroEducativo = "";
+let ubicacionUsuario = { lat: null, lng: null, direccion: "" };
 
 /**********************
  * BASE DE DATOS LOCAL
@@ -24,6 +31,7 @@ const residuos = {
 function loginUsuario() {
   const nombre = document.getElementById("nombreUsuario").value.trim();
   const password = document.getElementById("passwordUsuario").value.trim();
+  const centroSeleccionado = document.getElementById("centroEducativo").value;
 
   if (!nombre || !password) {
     alert("Introduce usuario y contraseña");
@@ -38,17 +46,30 @@ function loginUsuario() {
       alert("Contraseña incorrecta");
       return;
     }
+    // Si ya existe el usuario pero ahora selecciona un centro, actualizarlo
+    if (centroSeleccionado && !datos.centro) {
+      datos.centro = centroSeleccionado;
+      localStorage.setItem(clave, JSON.stringify(datos));
+    }
   } else {
-    datos = { password, co2: 0, residuos: 0 };
+    if (!centroSeleccionado) {
+      alert("Por favor, selecciona tu centro educativo");
+      return;
+    }
+    datos = { password, co2: 0, residuos: 0, codigosUsados: [], centro: centroSeleccionado };
     localStorage.setItem(clave, JSON.stringify(datos));
   }
 
   usuario = nombre;
+  centroEducativo = datos.centro || "";
   localStorage.setItem("eco_ultimo_usuario", usuario);
   cargarUsuario();
 
   document.getElementById("loginPantalla").style.display = "none";
   actualizarRanking();
+  actualizarRankingCentros();
+  actualizarEstadisticasGlobales();
+  obtenerUbicacion();
 }
 
 /**********************
@@ -58,13 +79,36 @@ function cargarUsuario() {
   const datos = JSON.parse(localStorage.getItem("eco_user_" + usuario));
   if (!datos) return;
 
-  co2Total = datos.co2;
-  contadorResiduos = datos.residuos;
+  co2Total = datos.co2 || 0;
+  contadorResiduos = datos.residuos || 0;
+  codigosUsados = datos.codigosUsados || [];
+  centroEducativo = datos.centro || "";
 
   document.getElementById("puntuacion").innerText = co2Total.toFixed(2);
   document.getElementById("contador").innerText = contadorResiduos;
 
+  rachaDiaria = datos.racha || 0;
+  ultimaFechaReciclaje = datos.ultimaFecha || null;
+  historialActividad = datos.historial || [];
+  logrosDesbloqueados = datos.logros || [];
+  materialesStats = datos.materiales || { plastico: 0, papel: 0, vidrio: 0, organico: 0, total: 0 };
+
+  verificarRacha();
   actualizarRecompensas();
+  actualizarNivel();
+  actualizarHistorialUI();
+  actualizarLogrosUI();
+  actualizarEstadisticasExtendidas();
+  actualizarEstadisticasGlobales();
+  actualizarRankingCentros();
+
+  // Nuevas funciones
+  actualizarPerfil();
+  actualizarRetos();
+  actualizarProgresoRecompensas();
+  actualizarNivelMini();
+  actualizarRachaStats();
+  mostrarCuriosidadInicio();
 }
 
 function guardarUsuario() {
@@ -74,7 +118,14 @@ function guardarUsuario() {
   localStorage.setItem(clave, JSON.stringify({
     password: datos.password,
     co2: co2Total,
-    residuos: contadorResiduos
+    residuos: contadorResiduos,
+    codigosUsados: codigosUsados,
+    racha: rachaDiaria,
+    ultimaFecha: ultimaFechaReciclaje,
+    historial: historialActividad,
+    logros: logrosDesbloqueados,
+    materiales: materialesStats,
+    centro: centroEducativo
   }));
 }
 
@@ -101,61 +152,399 @@ function buscarResiduo() {
     return;
   }
 
-  // 🔹 2. “IA” LOCAL (palabras clave)
-  const categorias = {
-    plastico: ["plastico", "botella", "envase", "bolsa"],
-    papel: ["papel", "carton", "revista", "periodico"],
-    vidrio: ["vidrio", "tarro", "frasco"],
-    organico: ["comida", "fruta", "cascara"],
-    electronico: ["movil", "ordenador", "pila", "bateria"]
+  // 🔹 2. MOTOR IA MEJORADO (Procesamiento de Lenguaje)
+
+  // Limpieza: quitamos artículos y palabras vacías
+  const stopWords = ["el", "la", "los", "las", "un", "una", "unos", "unas", "de", "del", "con", "para", "de", "en"];
+  let palabras = input.split(/\s+/).filter(p => !stopWords.includes(p));
+
+  // Normalización básica de plurales (quitamos 's' o 'es' al final)
+  palabras = palabras.map(p => {
+    if (p.endsWith("es") && p.length > 4) return p.slice(0, -2);
+    if (p.endsWith("s") && p.length > 3) return p.slice(0, -1);
+    return p;
+  });
+
+  const motorIA = {
+    reglas: [
+      { material: "plastico", keywords: ["plastico", "botella", "envase", "bolsa", "tapa", "yogur", "brick", "lata", "aluminio", "envoltorio", "film", "bandeja", "corcho", "porexpan", "brik", "leche", "zumo"], contenedor: "Contenedor amarillo", co2: 0.08 },
+      { material: "papel", keywords: ["papel", "carton", "caja", "revista", "periodico", "folio", "sobre", "folleto", "huevera", "libreta", "libro"], contenedor: "Contenedor azul", co2: 0.05 },
+      { material: "vidrio", keywords: ["vidrio", "cristal", "tarro", "frasco", "vino", "cerveza", "perfume", "copa", "vaso"], contenedor: "Contenedor verde", co2: 0.25 },
+      { material: "organico", keywords: ["comida", "fruta", "verdura", "cascara", "hueso", "pelo", "poso", "te", "infusion", "pan", "servilleta", "comida", "manzana", "platano", "sobra"], contenedor: "Contenedor orgánico", co2: 0.03 },
+      { material: "electronico", keywords: ["movil", "ordenador", "tablet", "cable", "cargador", "pila", "bateria", "pantalla", "raton", "auricular", "tele"], contenedor: "Punto limpio", co2: 1.0 },
+      { material: "aceite", keywords: ["aceite", "grasa", "cocina"], contenedor: "Punto limpio / Contenedor aceite", co2: 0.5 },
+      { material: "medicamento", keywords: ["pastilla", "medicina", "jarabe", "blister", "prospecto", "aspirina", "paracetamol"], contenedor: "Punto SIGRE (Farmacias)", co2: 0.15 },
+      { material: "ropa", keywords: ["ropa", "pantalon", "camiseta", "zapato", "textil", "abrigo", "bota", "calcetin", "prenda"], contenedor: "Contenedor ropa / Punto limpio", co2: 1.5 }
+    ]
   };
 
-  let detectado = null;
+  let mejorMatch = null;
+  let maxPuntuacion = 0;
 
-  for (const categoria in categorias) {
-    if (categorias[categoria].some(p => input.includes(p))) {
-      detectado = categoria;
-      break;
+  // Analizamos cada palabra limpia contra nuestras reglas
+  motorIA.reglas.forEach(regla => {
+    let puntuacion = 0;
+    palabras.forEach(palabra => {
+      regla.keywords.forEach(kw => {
+        if (palabra.includes(kw) || kw.includes(palabra)) {
+          puntuacion += Math.max(palabra.length, kw.length);
+        }
+      });
+    });
+
+    if (puntuacion > maxPuntuacion) {
+      maxPuntuacion = puntuacion;
+      mejorMatch = regla;
     }
+  });
+
+  if (mejorMatch) {
+    // Si la puntuación es baja, avisamos que es una suposición
+    const confianza = Math.min(Math.floor((maxPuntuacion / 5) * 100), 99);
+    aplicarResultadoInformativo(mejorMatch, `IA (Confianza: ${confianza}%)`);
+  } else {
+    // Fallback: Si no sabe qué es, normalmente va al gris (Resto)
+    aplicarResultadoInformativo(
+      { contenedor: "Contenedor Gris (Resto)", co2: 0.01 },
+      "IA (Por exclusión: No identificado como Reciclable específico)"
+    );
   }
-
-  if (!detectado) {
-    resultado.innerText = "No reconocido. Prueba con otro nombre.";
-    return;
-  }
-
-  const mapa = {
-    plastico: { contenedor: "Contenedor amarillo", co2: 0.08 },
-    papel: { contenedor: "Contenedor azul", co2: 0.05 },
-    vidrio: { contenedor: "Contenedor verde", co2: 0.25 },
-    organico: { contenedor: "Contenedor orgánico", co2: 0.03 },
-    electronico: { contenedor: "Punto limpio", co2: 1.0 }
-  };
-
-  aplicarResultado(mapa[detectado], detectado + " (IA)");
 }
 
 /**********************
- * APLICAR RESULTADO
+ * APLICAR RESULTADO (SOLO INFO)
  **********************/
-function aplicarResultado(dato, etiqueta) {
+function aplicarResultadoInformativo(dato, etiqueta) {
   const resultado = document.getElementById("resultado");
-
-  co2Total += dato.co2;
-  contadorResiduos++;
-
   resultado.innerHTML = `
-    🗑️ ${dato.contenedor}<br>
-    🌱 CO₂ ahorrado: <b>${dato.co2.toFixed(2)} kg</b><br>
-    🤖 Detectado: ${etiqueta}
+    🗑️ <b>${dato.contenedor}</b><br>
+    🌱 CO₂ que ahorrarías: ${dato.co2.toFixed(2)} kg<br>
+    🤖 Detectado: ${etiqueta}<br>
+    <small><i>Escanea el código para sumar puntos</i></small>
+  `;
+}
+
+/**********************
+ * ESCÁNER DE CÓDIGOS DE BARRAS
+ **********************/
+let html5QrCode = null;
+let codigosUsados = [];
+
+// Base de datos de ejemplo de códigos de barras
+const productosDB = {
+  // --- PLÁSTICO (Amarillo) ---
+  "8412345678901": { nombre: "Botella Agua 500ml", categoria: "plastico", co2: 0.15 },
+  "8410002000301": { nombre: "Lata de Refresco", categoria: "plastico", co2: 0.20 },
+  "8430004000501": { nombre: "Yogur Pack x4", categoria: "plastico", co2: 0.12 },
+  "8410123000602": { nombre: "Bote de Champú", categoria: "plastico", co2: 0.25 },
+  "8410456000703": { nombre: "Detergente Líquido", categoria: "plastico", co2: 0.40 },
+  "8410789000804": { nombre: "Bolsa de Patatas", categoria: "plastico", co2: 0.08 },
+  "8410011000905": { nombre: "Tarrina de Helado", categoria: "plastico", co2: 0.18 },
+  "8410022001002": { nombre: "Botella de Aceite", categoria: "plastico", co2: 0.22 },
+
+  // --- PAPEL Y CARTÓN (Azul) ---
+  "8420003000401": { nombre: "Caja de Galletas", categoria: "papel", co2: 0.10 },
+  "8420111001104": { nombre: "Caja de Cereales", categoria: "papel", co2: 0.15 },
+  "8420222001205": { nombre: "Periódico Diario", categoria: "papel", co2: 0.05 },
+  "8420333001306": { nombre: "Revista Semanal", categoria: "papel", co2: 0.07 },
+  "8420444001407": { nombre: "Huevera Cartón", categoria: "papel", co2: 0.09 },
+  "8420555001508": { nombre: "Caja de Pizza", categoria: "papel", co2: 0.12 },
+  "8420666001609": { nombre: "Sobre de Papel", categoria: "papel", co2: 0.02 },
+  "8420777001700": { nombre: "Cuaderno Viejo", categoria: "papel", co2: 0.20 },
+
+  // --- VIDRIO (Verde) ---
+  "8430111001801": { nombre: "Botella Vino", categoria: "vidrio", co2: 0.45 },
+  "8430222001902": { nombre: "Tarro de Mermelada", categoria: "vidrio", co2: 0.30 },
+  "8430333002003": { nombre: "Botella Cerveza", categoria: "vidrio", co2: 0.35 },
+  "8430444002104": { nombre: "Frasco Perfume", categoria: "vidrio", co2: 0.25 },
+  "8430555002205": { nombre: "Bote de Conservas", categoria: "vidrio", co2: 0.28 },
+  "8430666002306": { nombre: "Botella Refresco Vidrio", categoria: "vidrio", co2: 0.40 },
+
+  // --- ORGÁNICO / OTROS ---
+  "7501055300075": { nombre: "Envase Biodegradable", categoria: "organico", co2: 0.30 },
+  "8440111002404": { nombre: "Restos Comida", categoria: "organico", co2: 0.05 },
+  "8440222002505": { nombre: "Cáscaras de Huevo", categoria: "organico", co2: 0.03 },
+  "8450111002602": { nombre: "Pilas AA", categoria: "electronico", co2: 0.80 },
+  "8450222002703": { nombre: "Móvil Antiguo", categoria: "electronico", co2: 2.50 },
+  "8450333002804": { nombre: "Bombilla LED", categoria: "electronico", co2: 0.60 },
+  "8440333002906": { nombre: "Cápsula Café", categoria: "plastico", co2: 0.05 },
+  "8440444003007": { nombre: "Papel Aluminio", categoria: "plastico", co2: 0.10 }
+};
+
+function toggleEscaneo() {
+  const container = document.getElementById("reader-container");
+  const btn = document.getElementById("btn-escanear");
+
+  if (html5QrCode && html5QrCode.isScanning) {
+    detenerEscaneo();
+  } else {
+    container.classList.remove("seccion-oculta");
+    btn.innerHTML = '<i class="fa-solid fa-stop"></i> Detener Cámara';
+    iniciarEscaneo();
+  }
+}
+
+function iniciarEscaneo() {
+  html5QrCode = new Html5Qrcode("reader");
+  const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+
+  html5QrCode.start(
+    { facingMode: "environment" },
+    config,
+    (decodedText) => {
+      procesarCodigoDeBarras(decodedText);
+    },
+    (errorMessage) => {
+      // Ignorar errores de "no se encuentra código" en cada frame
+    }
+  ).catch(err => {
+    console.error("Error al iniciar cámara:", err);
+    alert("No se pudo acceder a la cámara.");
+  });
+}
+
+function detenerEscaneo() {
+  if (html5QrCode) {
+    html5QrCode.stop().then(() => {
+      document.getElementById("reader-container").classList.add("seccion-oculta");
+      document.getElementById("btn-escanear").innerHTML = '<i class="fa-solid fa-camera"></i> Iniciar Escáner';
+    });
+  }
+}
+
+function procesarCodigoDeBarras(codigo) {
+  const resDiv = document.getElementById("resultado-escaneo");
+
+  // 1. Verificar si ya se usó
+  if (codigosUsados.includes(codigo)) {
+    resDiv.innerHTML = `<div class='error-scan'>❌ Código <b>${codigo}</b> ya fue registrado hoy.</div>`;
+    return;
+  }
+
+  // 2. Buscar en "base de datos"
+  const producto = productosDB[codigo];
+  const configGeneral = {
+    plastico: { contenedor: "Contenedor amarillo", co2: 0.08 },
+    papel: { contenedor: "Contenedor azul", co2: 0.05 },
+    vidrio: { contenedor: "Contenedor verde", co2: 0.25 },
+    organico: { contenedor: "Contenedor orgánico", co2: 0.03 }
+  };
+
+  let infoFinal = null;
+  if (producto) {
+    infoFinal = {
+      nombre: producto.nombre,
+      contenedor: configGeneral[producto.categoria]?.contenedor || "Punto limpio",
+      co2: producto.co2
+    };
+  } else {
+    // Si no está en DB, asignar uno genérico basado en el primer dígito como simulacro
+    infoFinal = {
+      nombre: "Producto Desconocido",
+      contenedor: "Contenedor Amarillo (Genérico)",
+      co2: 0.05
+    };
+  }
+
+  // 3. Registrar y sumar puntos
+  registrarPuntos(codigo, infoFinal);
+  detenerEscaneo();
+}
+
+function registrarPuntos(codigo, info) {
+  const resDiv = document.getElementById("resultado-escaneo");
+
+  co2Total += info.co2;
+  contadorResiduos++;
+  codigosUsados.push(codigo);
+
+  // Registrar material (basado en la categoría de info o productoDB)
+  const cat = info.categoria || "plastico";
+  if (materialesStats[cat] !== undefined) {
+    materialesStats[cat]++;
+  } else {
+    materialesStats.organico++; // Por defecto a orgánico si es desconocido
+  }
+  materialesStats.total++;
+
+  resDiv.innerHTML = `
+    <div class='exito-scan'>
+      ✅ <b>¡Registrado con éxito!</b><br>
+      📦 ${info.nombre} (${codigo})<br>
+      🗑️ Tirar en: ${info.contenedor}<br>
+      🌱 Ganaste: <b>${info.co2.toFixed(2)} kg</b> de CO₂
+    </div>
   `;
 
   document.getElementById("puntuacion").innerText = co2Total.toFixed(2);
   document.getElementById("contador").innerText = contadorResiduos;
 
+  registrarActividad(codigo, info);
+  actualizarRacha();
+  actualizarNivel();
+  verificarLogros();
+  actualizarEstadisticasExtendidas();
   actualizarRecompensas();
   guardarUsuario();
   actualizarRanking();
+  actualizarEstadisticasGlobales();
+  actualizarRankingCentros();
+
+  // Nuevas funciones
+  actualizarPerfil();
+  actualizarRetos();
+  actualizarProgresoRecompensas();
+  actualizarNivelMini();
+  actualizarRachaStats();
+}
+
+function actualizarEstadisticasExtendidas() {
+  // 1. Resumen numérico
+  const co2El = document.getElementById("co2-total-num");
+  if (co2El) co2El.innerText = co2Total.toFixed(2);
+
+  // 2. Reparto de materiales (Barras)
+  if (materialesStats.total > 0) {
+    const pP = (materialesStats.plastico / materialesStats.total) * 100;
+    const pA = (materialesStats.papel / materialesStats.total) * 100;
+    const pV = (materialesStats.vidrio / materialesStats.total) * 100;
+    const pO = (materialesStats.organico / materialesStats.total) * 100;
+
+    actualizarBarra("plastico", pP);
+    actualizarBarra("papel", pA);
+    actualizarBarra("vidrio", pV);
+    actualizarBarra("otros", pO);
+  }
+
+  // 3. Equivalencias
+  // - 1 kg CO2 eq. a ~6 km en coche de gasolina pequeño.
+  // - 1 kg CO2 eq. a ~40 horas de bombilla LED (10W).
+  // - 1 kg CO2 eq. a ~2 duchas calientes (ahorro energía).
+
+  if (document.getElementById("equiv-km")) {
+    document.getElementById("equiv-km").innerText = (co2Total * 6).toFixed(1) + " km";
+    document.getElementById("equiv-horas").innerText = (co2Total * 40).toFixed(0) + "h";
+    document.getElementById("equiv-duchas").innerText = (co2Total * 2).toFixed(0);
+  }
+}
+
+function actualizarBarra(id, porcentaje) {
+  const label = document.getElementById("perc-" + id);
+  const bar = document.getElementById("bar-" + id);
+  if (label) label.innerText = Math.round(porcentaje) + "%";
+  if (bar) bar.style.width = porcentaje + "%";
+}
+
+/**********************
+ * LOGROS Y HISTORIAL
+ **********************/
+function registrarActividad(codigo, info) {
+  const item = {
+    fecha: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    nombre: info.nombre,
+    co2: info.co2
+  };
+
+  historialActividad.unshift(item);
+  if (historialActividad.length > 5) historialActividad.pop();
+  actualizarHistorialUI();
+}
+
+function actualizarHistorialUI() {
+  const lista = document.getElementById("lista-historial");
+  if (!lista) return;
+
+  if (historialActividad.length === 0) {
+    lista.innerHTML = '<li class="vacio">Aún no has reciclado nada</li>';
+    return;
+  }
+
+  lista.innerHTML = historialActividad.map(item => `
+    <li>
+      <span><b>${item.nombre}</b> <small>(${item.fecha})</small></span>
+      <span class="co2-historial">+${item.co2.toFixed(2)} kg</span>
+    </li>
+  `).join("");
+}
+
+function verificarLogros() {
+  const nuevosLogros = [];
+
+  if (contadorResiduos >= 1 && !logrosDesbloqueados.includes("logro-1")) nuevosLogros.push("logro-1");
+  if (rachaDiaria >= 3 && !logrosDesbloqueados.includes("logro-2")) nuevosLogros.push("logro-2");
+  if (contadorResiduos >= 20 && !logrosDesbloqueados.includes("logro-3")) nuevosLogros.push("logro-3");
+  if (co2Total >= 10 && !logrosDesbloqueados.includes("logro-4")) nuevosLogros.push("logro-4");
+
+  if (nuevosLogros.length > 0) {
+    logrosDesbloqueados.push(...nuevosLogros);
+    actualizarLogrosUI();
+    // Podrías añadir un alert o notificación cool aquí
+  }
+}
+
+function actualizarLogrosUI() {
+  logrosDesbloqueados.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.remove("bloqueado");
+      el.classList.add("desbloqueado");
+    }
+  });
+}
+
+/**********************
+ * GAMIFICACIÓN: NIVELES Y RACHAS
+ **********************/
+function actualizarNivel() {
+  const niveles = [
+    { nombre: "Semilla", min: 0, max: 5 },
+    { nombre: "Brote", min: 5, max: 15 },
+    { nombre: "Pequeño Árbol", min: 15, max: 30 },
+    { nombre: "Guardián del Bosque", min: 30, max: 50 },
+    { nombre: "Héroe del Planeta", min: 50, max: 100 }
+  ];
+
+  let nivelActual = niveles[0];
+  for (let i = niveles.length - 1; i >= 0; i--) {
+    if (co2Total >= niveles[i].min) {
+      nivelActual = niveles[i];
+      break;
+    }
+  }
+
+  const progreso = ((co2Total - nivelActual.min) / (nivelActual.max - nivelActual.min)) * 100;
+  const porcentaje = Math.min(Math.max(progreso, 0), 100);
+
+  document.getElementById("nivel-nombre").innerText = `Nivel: ${nivelActual.nombre}`;
+  document.getElementById("nivel-porcentaje").innerText = `${Math.floor(porcentaje)}%`;
+  document.getElementById("barra-progreso-fill").style.width = `${porcentaje}%`;
+}
+
+function verificarRacha() {
+  if (!ultimaFechaReciclaje) {
+    rachaDiaria = 0;
+  } else {
+    const hoy = new Date().toDateString();
+    const ultima = new Date(ultimaFechaReciclaje).toDateString();
+
+    if (hoy !== ultima) {
+      const ayer = new Date();
+      ayer.setDate(ayer.getDate() - 1);
+      if (ultima !== ayer.toDateString()) {
+        rachaDiaria = 0; // Se perdió la racha
+      }
+    }
+  }
+  document.getElementById("racha-valor").innerText = `${rachaDiaria} días`;
+}
+
+function actualizarRacha() {
+  const hoy = new Date().toDateString();
+  if (ultimaFechaReciclaje !== hoy) {
+    rachaDiaria++;
+    ultimaFechaReciclaje = hoy;
+  }
+  document.getElementById("racha-valor").innerText = `${rachaDiaria} días`;
 }
 
 /**********************
@@ -234,5 +623,385 @@ window.onload = () => {
     cargarUsuario();
     document.getElementById("loginPantalla").style.display = "none";
     actualizarRanking();
+    actualizarRankingCentros();
+    actualizarEstadisticasGlobales();
+    obtenerUbicacion();
   }
 };
+
+/**********************
+ * ESTADÍSTICAS GLOBALES DE MOLINA DE SEGURA
+ **********************/
+function actualizarEstadisticasGlobales() {
+  let totalUsuarios = 0;
+  let co2Global = 0;
+  let objetosGlobal = 0;
+
+  // Recorrer todos los usuarios en localStorage
+  for (let i = 0; i < localStorage.length; i++) {
+    const clave = localStorage.key(i);
+    if (clave.startsWith("eco_user_")) {
+      totalUsuarios++;
+      const datos = JSON.parse(localStorage.getItem(clave));
+      co2Global += datos.co2 || 0;
+      objetosGlobal += datos.residuos || 0;
+    }
+  }
+
+  // Actualizar UI
+  const totalEl = document.getElementById("total-usuarios");
+  const co2El = document.getElementById("co2-global");
+  const objetosEl = document.getElementById("objetos-global");
+
+  if (totalEl) totalEl.innerText = totalUsuarios;
+  if (co2El) co2El.innerText = co2Global.toFixed(2);
+  if (objetosEl) objetosEl.innerText = objetosGlobal;
+
+  // Equivalencias globales
+  // 1 árbol absorbe ~22kg de CO2 al año
+  const arboles = (co2Global / 22).toFixed(1);
+  // 1 kg CO2 = ~6 km en coche
+  const kmGlobal = (co2Global * 6).toFixed(0);
+  // 1 kg CO2 = ~2 kWh (aprox)
+  const energiaKwh = (co2Global * 2).toFixed(0);
+
+  const arbolesEl = document.getElementById("equiv-arboles");
+  const kmGlobalEl = document.getElementById("equiv-km-global");
+  const energiaEl = document.getElementById("equiv-energia");
+
+  if (arbolesEl) arbolesEl.innerText = arboles;
+  if (kmGlobalEl) kmGlobalEl.innerText = kmGlobal;
+  if (energiaEl) energiaEl.innerText = energiaKwh;
+}
+
+/**********************
+ * RANKING DE CENTROS EDUCATIVOS
+ **********************/
+function actualizarRankingCentros() {
+  const lista = document.getElementById("rankingCentros");
+  if (!lista) return;
+
+  const centrosStats = {};
+
+  // Recorrer todos los usuarios y agrupar por centro
+  for (let i = 0; i < localStorage.length; i++) {
+    const clave = localStorage.key(i);
+    if (clave.startsWith("eco_user_")) {
+      const datos = JSON.parse(localStorage.getItem(clave));
+      const centro = datos.centro;
+
+      if (centro) {
+        if (!centrosStats[centro]) {
+          centrosStats[centro] = { nombre: centro, co2: 0, usuarios: 0, objetos: 0 };
+        }
+        centrosStats[centro].co2 += datos.co2 || 0;
+        centrosStats[centro].usuarios++;
+        centrosStats[centro].objetos += datos.residuos || 0;
+      }
+    }
+  }
+
+  // Convertir a array y ordenar por CO2
+  const ranking = Object.values(centrosStats).sort((a, b) => b.co2 - a.co2);
+
+  lista.innerHTML = "";
+
+  if (ranking.length === 0) {
+    lista.innerHTML = '<li class="vacio">Aún no hay centros registrados</li>';
+    return;
+  }
+
+  ranking.forEach((centro, i) => {
+    const li = document.createElement("li");
+    const medalla = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}.`;
+    const esActual = centro.nombre === centroEducativo ? ' class="mi-centro"' : '';
+
+    li.innerHTML = `
+      <div class="centro-info"${esActual}>
+        <span class="centro-posicion">${medalla}</span>
+        <div class="centro-detalles">
+          <span class="centro-nombre">${centro.nombre}</span>
+          <span class="centro-usuarios"><i class="fa-solid fa-user-group"></i> ${centro.usuarios} estudiantes</span>
+        </div>
+      </div>
+      <div class="centro-stats">
+        <span class="centro-co2">${centro.co2.toFixed(2)} kg CO₂</span>
+        <span class="centro-objetos"><i class="fa-solid fa-recycle"></i> ${centro.objetos}</span>
+      </div>
+    `;
+
+    if (centro.nombre === centroEducativo) {
+      li.classList.add("mi-centro-item");
+
+      // Actualizar info del centro en el perfil
+      actualizarInfoCentroPerfil(centro, i + 1);
+    }
+
+    lista.appendChild(li);
+  });
+}
+
+/**********************
+ * ACTUALIZAR PERFIL
+ **********************/
+function actualizarPerfil() {
+  // Nombre de usuario
+  const nombreEl = document.getElementById("perfil-nombre");
+  if (nombreEl) nombreEl.innerText = usuario || "Usuario";
+
+  // Centro educativo
+  const centroEl = document.getElementById("perfil-centro");
+  if (centroEl) centroEl.innerText = centroEducativo || "Sin centro asignado";
+
+  const centroNombreEl = document.getElementById("centro-nombre-perfil");
+  if (centroNombreEl) centroNombreEl.innerText = centroEducativo || "Sin centro";
+
+  // Estadísticas del perfil
+  const perfilCo2 = document.getElementById("perfil-co2");
+  const perfilObjetos = document.getElementById("perfil-objetos");
+  const perfilRacha = document.getElementById("perfil-racha");
+  const perfilLogros = document.getElementById("perfil-logros");
+
+  if (perfilCo2) perfilCo2.innerText = co2Total.toFixed(2);
+  if (perfilObjetos) perfilObjetos.innerText = contadorResiduos;
+  if (perfilRacha) perfilRacha.innerText = rachaDiaria;
+  if (perfilLogros) perfilLogros.innerText = logrosDesbloqueados.length;
+
+  // Nivel badge
+  const nivelBadge = document.getElementById("perfil-nivel-badge");
+  if (nivelBadge) {
+    const niveles = [
+      { nombre: "Semilla", emoji: "🌱", min: 0 },
+      { nombre: "Brote", emoji: "🌿", min: 5 },
+      { nombre: "Pequeño Árbol", emoji: "🌳", min: 15 },
+      { nombre: "Guardián del Bosque", emoji: "🏕️", min: 30 },
+      { nombre: "Héroe del Planeta", emoji: "🌍", min: 50 }
+    ];
+
+    let nivelActual = niveles[0];
+    for (let i = niveles.length - 1; i >= 0; i--) {
+      if (co2Total >= niveles[i].min) {
+        nivelActual = niveles[i];
+        break;
+      }
+    }
+    nivelBadge.innerText = `${nivelActual.emoji} ${nivelActual.nombre}`;
+  }
+}
+
+function actualizarInfoCentroPerfil(centro, posicion) {
+  const posicionEl = document.getElementById("centro-posicion-actual");
+  const usuariosEl = document.getElementById("centro-usuarios-count");
+  const co2El = document.getElementById("centro-co2-total");
+
+  if (posicionEl) posicionEl.innerText = `#${posicion}`;
+  if (usuariosEl) usuariosEl.innerText = centro.usuarios;
+  if (co2El) co2El.innerText = centro.co2.toFixed(2);
+}
+
+/**********************
+ * ACTUALIZAR RETOS
+ **********************/
+function actualizarRetos() {
+  // Reto 1: Recicla 5 objetos
+  const reto1Progreso = document.getElementById("reto-1-progreso");
+  const reto1Texto = document.getElementById("reto-1-texto");
+  const reto1 = document.getElementById("reto-1");
+  const progreso1 = Math.min((contadorResiduos / 5) * 100, 100);
+
+  if (reto1Progreso) reto1Progreso.style.width = progreso1 + "%";
+  if (reto1Texto) reto1Texto.innerText = `${Math.min(contadorResiduos, 5)}/5 objetos`;
+  if (reto1 && progreso1 >= 100) reto1.classList.add("completado");
+
+  // Reto 2: Ahorra 2 kg de CO₂
+  const reto2Progreso = document.getElementById("reto-2-progreso");
+  const reto2Texto = document.getElementById("reto-2-texto");
+  const reto2 = document.getElementById("reto-2");
+  const progreso2 = Math.min((co2Total / 2) * 100, 100);
+
+  if (reto2Progreso) reto2Progreso.style.width = progreso2 + "%";
+  if (reto2Texto) reto2Texto.innerText = `${Math.min(co2Total, 2).toFixed(1)}/2 kg`;
+  if (reto2 && progreso2 >= 100) reto2.classList.add("completado");
+
+  // Reto 3: Mantén 3 días de racha
+  const reto3Progreso = document.getElementById("reto-3-progreso");
+  const reto3Texto = document.getElementById("reto-3-texto");
+  const reto3 = document.getElementById("reto-3");
+  const progreso3 = Math.min((rachaDiaria / 3) * 100, 100);
+
+  if (reto3Progreso) reto3Progreso.style.width = progreso3 + "%";
+  if (reto3Texto) reto3Texto.innerText = `${Math.min(rachaDiaria, 3)}/3 días`;
+  if (reto3 && progreso3 >= 100) reto3.classList.add("completado");
+}
+
+/**********************
+ * ACTUALIZAR PROGRESO RECOMPENSAS
+ **********************/
+function actualizarProgresoRecompensas() {
+  const co2El = document.getElementById("co2-recompensas");
+  if (co2El) co2El.innerText = co2Total.toFixed(2);
+
+  const recompensas = [
+    { nombre: "Café gratis", objetivo: 5 },
+    { nombre: "Entrada cultural", objetivo: 10 },
+    { nombre: "Árbol plantado", objetivo: 20 },
+    { nombre: "Camiseta EcoMaps", objetivo: 50 }
+  ];
+
+  // Encontrar la próxima recompensa
+  let proximaRecompensa = recompensas[recompensas.length - 1];
+  for (const r of recompensas) {
+    if (co2Total < r.objetivo) {
+      proximaRecompensa = r;
+      break;
+    }
+  }
+
+  const nombreEl = document.getElementById("proxima-recompensa-nombre");
+  const barraEl = document.getElementById("barra-recompensa-fill");
+  const faltaEl = document.getElementById("falta-recompensa");
+
+  if (nombreEl) nombreEl.innerText = proximaRecompensa.nombre;
+
+  const progreso = Math.min((co2Total / proximaRecompensa.objetivo) * 100, 100);
+  if (barraEl) barraEl.style.width = progreso + "%";
+
+  const falta = Math.max(proximaRecompensa.objetivo - co2Total, 0);
+  if (faltaEl) {
+    if (falta <= 0) {
+      faltaEl.innerText = "¡Ya puedes canjearlo!";
+    } else {
+      faltaEl.innerText = `Te faltan ${falta.toFixed(2)} kg`;
+    }
+  }
+}
+
+/**********************
+ * CERRAR SESIÓN
+ **********************/
+function cerrarSesion() {
+  if (confirm("¿Estás seguro de que quieres cerrar sesión?")) {
+    localStorage.removeItem("eco_ultimo_usuario");
+    location.reload();
+  }
+}
+
+/**********************
+ * CURIOSIDADES INICIO
+ **********************/
+function mostrarCuriosidadInicio() {
+  const curiosidades = [
+    "Reciclar una lata de aluminio ahorra energía suficiente para usar una TV durante 3 horas.",
+    "El vidrio puede reciclarse infinitamente sin perder calidad.",
+    "Reciclar papel reduce la deforestación y ahorra agua.",
+    "El plástico reciclado puede convertirse en ropa o muebles.",
+    "Reciclar 1 kg de papel ahorra más de 1 kg de CO₂.",
+    "Una botella de plástico tarda 500 años en descomponerse.",
+    "En España se generan 22 millones de toneladas de residuos al año.",
+    "El 80% de lo que tiramos podría reciclarse."
+  ];
+
+  const indice = Math.floor(Math.random() * curiosidades.length);
+  const el = document.getElementById("curiosidad-inicio");
+  if (el) el.textContent = curiosidades[indice];
+
+  // También actualizar la curiosidad del perfil
+  const elPerfil = document.getElementById("curiosidad");
+  if (elPerfil) elPerfil.textContent = curiosidades[indice];
+}
+
+/**********************
+ * ACTUALIZAR NIVEL MINI (INICIO)
+ **********************/
+function actualizarNivelMini() {
+  const niveles = [
+    { nombre: "Semilla", min: 0 },
+    { nombre: "Brote", min: 5 },
+    { nombre: "Pequeño Árbol", min: 15 },
+    { nombre: "Guardián", min: 30 },
+    { nombre: "Héroe", min: 50 }
+  ];
+
+  let nivelActual = niveles[0];
+  for (let i = niveles.length - 1; i >= 0; i--) {
+    if (co2Total >= niveles[i].min) {
+      nivelActual = niveles[i];
+      break;
+    }
+  }
+
+  const el = document.getElementById("nivel-nombre-mini");
+  if (el) el.innerText = nivelActual.nombre;
+}
+
+/**********************
+ * ACTUALIZAR RACHA STATS
+ **********************/
+function actualizarRachaStats() {
+  const el = document.getElementById("racha-stats");
+  if (el) el.innerText = rachaDiaria;
+}
+
+/**********************
+ * GEOLOCALIZACIÓN SIMPLIFICADA
+ **********************/
+function obtenerUbicacion() {
+  const direccionEl = document.getElementById("direccion-actual");
+  const coordsEl = document.getElementById("ubicacion-coords-mini");
+
+  if (!navigator.geolocation) {
+    if (direccionEl) direccionEl.innerText = "Geolocalización no disponible";
+    return;
+  }
+
+  if (direccionEl) direccionEl.innerText = "Obteniendo ubicación...";
+
+  navigator.geolocation.getCurrentPosition(
+    (posicion) => {
+      const lat = posicion.coords.latitude;
+      const lng = posicion.coords.longitude;
+      ubicacionUsuario.lat = lat;
+      ubicacionUsuario.lng = lng;
+
+      // Mostrar coordenadas
+      const latEl = document.getElementById("lat-value");
+      const lngEl = document.getElementById("lng-value");
+      if (latEl) latEl.innerText = lat.toFixed(5);
+      if (lngEl) lngEl.innerText = lng.toFixed(5);
+      if (coordsEl) coordsEl.style.display = "block";
+
+      // Obtener dirección
+      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
+        .then(response => response.json())
+        .then(data => {
+          if (data && data.display_name) {
+            const partes = data.display_name.split(",");
+            const direccionCorta = partes.slice(0, 3).join(",").trim();
+            ubicacionUsuario.direccion = direccionCorta;
+            if (direccionEl) direccionEl.innerText = direccionCorta;
+          } else {
+            if (direccionEl) direccionEl.innerText = "Molina de Segura, Murcia";
+          }
+        })
+        .catch(() => {
+          if (direccionEl) direccionEl.innerText = "Molina de Segura, Murcia";
+        });
+    },
+    (error) => {
+      let mensaje = "Molina de Segura";
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          mensaje = "Ubicación denegada";
+          break;
+        case error.POSITION_UNAVAILABLE:
+          mensaje = "Ubicación no disponible";
+          break;
+        case error.TIMEOUT:
+          mensaje = "Tiempo agotado";
+          break;
+      }
+      if (direccionEl) direccionEl.innerText = mensaje;
+    },
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+}
