@@ -11,6 +11,75 @@ let logrosDesbloqueados = [];
 let materialesStats = { plastico: 0, papel: 0, vidrio: 0, organico: 0, total: 0 };
 let centroEducativo = "";
 let ubicacionUsuario = { lat: null, lng: null, direccion: "" };
+// Sesión criptográfica (clave derivada de la contraseña en memoria)
+let sessionCryptoKey = null;
+let sessionSalt = null; // base64
+// Constante de aplicación para cifrar el nombre de usuario localmente.
+// Nota: para producción, NO embedas secretos en el cliente.
+const APP_SECRET = "EcoMapsLocalSecret_v1";
+
+// --- Helpers WebCrypto ---
+function bufToBase64(buffer) {
+  return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+}
+
+function base64ToBuf(b64) {
+  const binary = atob(b64);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+async function deriveBits(password, salt, iterations = 120000, length = 256) {
+  const enc = new TextEncoder();
+  const baseKey = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(password),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits', 'deriveKey']
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: salt, iterations: iterations, hash: 'SHA-256' },
+    baseKey,
+    length
+  );
+  return bits;
+}
+
+async function hashPassword(password, saltBuf) {
+  const bits = await deriveBits(password, saltBuf, 120000, 256);
+  return bufToBase64(bits);
+}
+
+async function importAesKeyFromSecret(secret) {
+  const enc = new TextEncoder();
+  const salt = new TextEncoder().encode('eco_username_salt');
+  const derived = await deriveBits(secret, salt, 60000, 256);
+  return crypto.subtle.importKey('raw', derived, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+}
+
+async function encryptTextAESGCM(plain) {
+  const key = await importAesKeyFromSecret(APP_SECRET);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(plain));
+  return bufToBase64(iv) + ':' + bufToBase64(ct);
+}
+
+async function decryptTextAESGCM(payload) {
+  try {
+    const [ivB64, ctB64] = payload.split(':');
+    const iv = new Uint8Array(base64ToBuf(ivB64));
+    const ct = base64ToBuf(ctB64);
+    const key = await importAesKeyFromSecret(APP_SECRET);
+    const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+    return new TextDecoder().decode(dec);
+  } catch (e) {
+    console.warn('Error descifrando texto:', e);
+    return null;
+  }
+}
 
 /**********************
  * BASE DE DATOS LOCAL
@@ -28,7 +97,7 @@ const residuos = {
 /**********************
  * LOGIN / REGISTRO
  **********************/
-function loginUsuario() {
+async function loginUsuario() {
   const nombre = document.getElementById("nombreUsuario").value.trim();
   const password = document.getElementById("passwordUsuario").value.trim();
   const centroSeleccionado = document.getElementById("centroEducativo").value;
@@ -42,21 +111,48 @@ function loginUsuario() {
   let datos = JSON.parse(localStorage.getItem(clave));
 
   if (datos) {
-    if (datos.password !== password) {
-      alert("Contraseña incorrecta");
+    // Cuenta legacy: contraseña en texto plano -> migrar a hash
+    if (datos.password) {
+      if (datos.password !== password) {
+        alert("Contraseña incorrecta");
+        return;
+      }
+      // Migramos: generamos salt y hash, eliminamos campo password
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const passwordHash = await hashPassword(password, salt);
+      datos.passwordHash = passwordHash;
+      datos.salt = bufToBase64(salt);
+      delete datos.password;
+      localStorage.setItem(clave, JSON.stringify(datos));
+    } else if (datos.passwordHash && datos.salt) {
+      // Cuenta nueva: comprobar hash
+      const saltBuf = base64ToBuf(datos.salt);
+      const hash = await hashPassword(password, saltBuf);
+      if (hash !== datos.passwordHash) {
+        alert("Contraseña incorrecta");
+        return;
+      }
+    } else {
+      // Formato inesperado
+      alert("Formato de cuenta desconocido. Regístrate de nuevo.");
       return;
     }
+
     // Si ya existe el usuario pero ahora selecciona un centro, actualizarlo
     if (centroSeleccionado && !datos.centro) {
       datos.centro = centroSeleccionado;
       localStorage.setItem(clave, JSON.stringify(datos));
     }
   } else {
+    // Registro: guardamos salt + hash y ciframos el nombre dentro del objeto
     if (!centroSeleccionado) {
       alert("Por favor, selecciona tu centro educativo");
       return;
     }
-    datos = { password, co2: 0, residuos: 0, codigosUsados: [], centro: centroSeleccionado };
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const passwordHash = await hashPassword(password, salt);
+    const nombreEnc = await encryptTextAESGCM(nombre);
+    datos = { passwordHash, salt: bufToBase64(salt), username_enc: nombreEnc, co2: 0, residuos: 0, codigosUsados: [], centro: centroSeleccionado };
     localStorage.setItem(clave, JSON.stringify(datos));
   }
 
@@ -112,11 +208,16 @@ function cargarUsuario() {
 }
 
 function guardarUsuario() {
-  const clave = "eco_user_" + usuario;
-  const datos = JSON.parse(localStorage.getItem(clave));
+  if (!usuario) return;
 
+  const clave = "eco_user_" + usuario;
+  const datosAlmacenados = JSON.parse(localStorage.getItem(clave)) || {};
+
+  // Guardamos passwordHash y salt (si existen) en lugar de contraseña en texto plano
   localStorage.setItem(clave, JSON.stringify({
-    password: datos.password,
+    passwordHash: datosAlmacenados.passwordHash || "",
+    salt: datosAlmacenados.salt || "",
+    username_enc: datosAlmacenados.username_enc || "",
     co2: co2Total,
     residuos: contadorResiduos,
     codigosUsados: codigosUsados,
@@ -125,7 +226,7 @@ function guardarUsuario() {
     historial: historialActividad,
     logros: logrosDesbloqueados,
     materiales: materialesStats,
-    centro: centroEducativo
+    centro: centroEducativo || datosAlmacenados.centro || ""
   }));
 }
 
@@ -224,11 +325,28 @@ function aplicarResultadoInformativo(dato, etiqueta) {
   `;
 }
 
+// Aplica resultado cuando la búsqueda es una entrada directa de la base `residuos`
+function aplicarResultado(dato, clave) {
+  const resultado = document.getElementById("resultado");
+  const nombre = clave || "Residuo";
+  resultado.innerHTML = `
+    🗑️ <b>${dato.contenedor}</b><br>
+    📘 Tipo: ${nombre}<br>
+    🌱 CO₂ que ahorrarías: ${dato.co2.toFixed(2)} kg<br>
+    <small><i>Escanea el código para sumar puntos</i></small>
+  `;
+}
+
 /**********************
  * ESCÁNER DE CÓDIGOS DE BARRAS
  **********************/
 let html5QrCode = null;
 let codigosUsados = [];
+let barcodeStream = null;
+let barcodeVideo = null;
+let barcodeCanvas = null;
+let barcodeInterval = null;
+let barcodeDetector = null;
 
 // Base de datos de ejemplo de códigos de barras
 const productosDB = {
@@ -275,6 +393,11 @@ function toggleEscaneo() {
   const container = document.getElementById("reader-container");
   const btn = document.getElementById("btn-escanear");
 
+  if (!usuario) {
+    alert("Inicia sesión primero");
+    return;
+  }
+
   if (html5QrCode && html5QrCode.isScanning) {
     detenerEscaneo();
   } else {
@@ -285,30 +408,200 @@ function toggleEscaneo() {
 }
 
 function iniciarEscaneo() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showCameraError("Tu navegador no soporta el acceso a la cámara.");
+    return;
+  }
+
+  // Si existe API nativa de detección de códigos (BarcodeDetector), la usamos como prioridad
+  if (window.BarcodeDetector) {
+    const supportedFormats = ["ean_13", "ean_8", "upc_a", "code_128", "qr_code"];
+    try {
+      barcodeDetector = new BarcodeDetector({ formats: supportedFormats });
+      startBarcodeDetector();
+      return;
+    } catch (err) {
+      console.warn('BarcodeDetector no pudo inicializarse:', err);
+      // si falla, continuamos con Html5Qrcode
+    }
+  }
+
   html5QrCode = new Html5Qrcode("reader");
   const config = { fps: 10, qrbox: { width: 250, height: 150 } };
 
-  html5QrCode.start(
-    { facingMode: "environment" },
-    config,
-    (decodedText) => {
-      procesarCodigoDeBarras(decodedText);
-    },
-    (errorMessage) => {
-      // Ignorar errores de "no se encuentra código" en cada frame
-    }
-  ).catch(err => {
-    console.error("Error al iniciar cámara:", err);
-    alert("No se pudo acceder a la cámara.");
+  // Si la librería soporta formatos, intentamos incluir barras comunes
+  if (window.Html5QrcodeSupportedFormats) {
+    const f = window.Html5QrcodeSupportedFormats;
+    const formatoPreferidos = [];
+    if (f.EAN_13) formatoPreferidos.push(f.EAN_13);
+    if (f.CODE_128) formatoPreferidos.push(f.CODE_128);
+    if (f.UPC_A) formatoPreferidos.push(f.UPC_A);
+    if (f.QR_CODE) formatoPreferidos.push(f.QR_CODE);
+    if (formatoPreferidos.length) config.formatsToSupport = formatoPreferidos;
+  }
+
+  // Helper para iniciar con un deviceId o con facingMode
+  function startWithCamera(camera) {
+    const cameraArg = camera && camera.id ? camera.id : { facingMode: "environment" };
+    setCameraStatus("Iniciando cámara...");
+    html5QrCode.start(
+      cameraArg,
+      config,
+      (decodedText) => {
+        console.log("Decoded:", decodedText);
+        setCameraStatus("Código detectado: " + decodedText);
+        procesarCodigoDeBarras(decodedText);
+      },
+      (errorMessage) => {
+        // mostramos errores leves en consola para debug
+        console.debug("Frame scan error:", errorMessage);
+      }
+    ).then(() => {
+      clearCameraError();
+      setCameraStatus("Cámara activa: esperando código...");
+    }).catch(err => {
+      console.error("Error al iniciar cámara:", err);
+      showCameraError("No se pudo acceder a la cámara. Comprueba permisos o dispositivo.");
+    });
+  }
+
+  // Intentar elegir una cámara física si la librería lo permite
+  if (Html5Qrcode.getCameras) {
+    Html5Qrcode.getCameras().then(cameras => {
+      if (cameras && cameras.length) {
+        // Preferimos cámaras traseras (labels con back/rear) o la última disponible
+        let preferida = cameras.find(c => /back|rear|trasera|trasero/i.test(c.label)) || cameras[cameras.length - 1];
+        startWithCamera(preferida);
+      } else {
+        startWithCamera(null);
+      }
+    }).catch(err => {
+      console.warn('No se pudo listar cámaras, usando facingMode', err);
+      startWithCamera(null);
+    });
+  } else {
+    startWithCamera(null);
+  }
+}
+
+// --- BarcodeDetector fallback ---
+function startBarcodeDetector() {
+  barcodeVideo = document.getElementById('barcode-video');
+  barcodeCanvas = document.getElementById('barcode-canvas');
+
+  const constraints = { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } };
+  setCameraStatus('Iniciando detector nativo de códigos...');
+
+  navigator.mediaDevices.getUserMedia(constraints).then(stream => {
+    barcodeStream = stream;
+    barcodeVideo.srcObject = stream;
+    barcodeVideo.style.display = 'block';
+    document.getElementById('reader-container').classList.remove('seccion-oculta');
+    document.getElementById('btn-escanear').innerHTML = '<i class="fa-solid fa-stop"></i> Detener Cámara';
+
+    // Esperar a que el video tenga datos
+    barcodeVideo.addEventListener('loadeddata', () => {
+      // ajustar canvas al tamaño
+      barcodeCanvas.width = barcodeVideo.videoWidth || 640;
+      barcodeCanvas.height = barcodeVideo.videoHeight || 480;
+
+      barcodeInterval = setInterval(async () => {
+        try {
+          const ctx = barcodeCanvas.getContext('2d');
+          ctx.drawImage(barcodeVideo, 0, 0, barcodeCanvas.width, barcodeCanvas.height);
+          const bitmap = barcodeCanvas; // detect acepta ImageBitmap or canvas
+          const barcodes = await barcodeDetector.detect(bitmap);
+          if (barcodes && barcodes.length) {
+            // Tomamos el primero
+            const code = barcodes[0].rawValue;
+            console.log('BarcodeDetector decoded:', code, barcodes[0]);
+            procesarCodigoDeBarras(code);
+            detenerEscaneo();
+          }
+        } catch (e) {
+          console.debug('Barcode detect error', e);
+        }
+      }, 500);
+      clearCameraError();
+      setCameraStatus('Detector activo: espera el código...');
+    }, { once: true });
+  }).catch(err => {
+    console.error('getUserMedia para BarcodeDetector falló:', err);
+    showCameraError('No se pudo acceder a la cámara para el detector nativo.');
   });
 }
 
+function stopBarcodeDetector() {
+  if (barcodeInterval) {
+    clearInterval(barcodeInterval);
+    barcodeInterval = null;
+  }
+  if (barcodeVideo) {
+    barcodeVideo.pause();
+    barcodeVideo.srcObject = null;
+    barcodeVideo.style.display = 'none';
+  }
+  if (barcodeStream) {
+    barcodeStream.getTracks().forEach(t => t.stop());
+    barcodeStream = null;
+  }
+  barcodeDetector = null;
+  clearCameraError();
+}
+
 function detenerEscaneo() {
+  // Detener Html5Qrcode si está activo
   if (html5QrCode) {
     html5QrCode.stop().then(() => {
       document.getElementById("reader-container").classList.add("seccion-oculta");
       document.getElementById("btn-escanear").innerHTML = '<i class="fa-solid fa-camera"></i> Iniciar Escáner';
+      clearCameraError();
+    }).catch(() => {
+      document.getElementById("reader-container").classList.add("seccion-oculta");
+      document.getElementById("btn-escanear").innerHTML = '<i class="fa-solid fa-camera"></i> Iniciar Escáner';
     });
+    html5QrCode = null;
+  }
+
+  // Detener BarcodeDetector fallback si está activo
+  stopBarcodeDetector();
+}
+
+function showCameraError(msg) {
+  const el = document.getElementById("camera-error");
+  if (el) {
+    el.innerText = msg;
+    el.style.display = "block";
+    el.style.color = "#b71c1c";
+    el.style.background = "rgba(183,28,28,0.05)";
+    el.style.padding = "6px 8px";
+    el.style.borderRadius = "6px";
+  } else {
+    alert(msg);
+  }
+}
+
+function clearCameraError() {
+  const el = document.getElementById("camera-error");
+  if (el) {
+    el.innerText = "";
+    el.style.display = "none";
+    el.style.color = "";
+    el.style.background = "";
+    el.style.padding = "";
+    el.style.borderRadius = "";
+  }
+}
+
+function setCameraStatus(msg) {
+  const el = document.getElementById("camera-error");
+  if (el) {
+    el.innerText = msg;
+    el.style.display = "block";
+    el.style.color = "#0b6623";
+    el.style.background = "rgba(11,102,35,0.05)";
+    el.style.padding = "6px 8px";
+    el.style.borderRadius = "6px";
   }
 }
 
@@ -335,14 +628,16 @@ function procesarCodigoDeBarras(codigo) {
     infoFinal = {
       nombre: producto.nombre,
       contenedor: configGeneral[producto.categoria]?.contenedor || "Punto limpio",
-      co2: producto.co2
+      co2: producto.co2,
+      categoria: producto.categoria
     };
   } else {
     // Si no está en DB, asignar uno genérico basado en el primer dígito como simulacro
     infoFinal = {
       nombre: "Producto Desconocido",
       contenedor: "Contenedor Amarillo (Genérico)",
-      co2: 0.05
+      co2: 0.05,
+      categoria: "plastico"
     };
   }
 
@@ -884,12 +1179,6 @@ function cerrarSesion() {
     localStorage.removeItem("eco_ultimo_usuario");
     location.reload();
   }
-}
-
-/**********************
- * CURIOSIDADES INICIO
- **********************/
-function mostrarCuriosidadInicio() {
   const curiosidades = [
     "Reciclar una lata de aluminio ahorra energía suficiente para usar una TV durante 3 horas.",
     "El vidrio puede reciclarse infinitamente sin perder calidad.",

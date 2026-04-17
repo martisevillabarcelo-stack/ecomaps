@@ -137,6 +137,10 @@
       <p>Escanea el código de barras para registrar tu reciclaje y ganar puntos.</p>
       <div id="reader-container" class="seccion-oculta" style="width: 100%; max-width: 500px; margin: 20px auto;">
         <div id="reader"></div>
+        <div id="camera-error" class="camera-error" style="display:none; color:#b71c1c; margin-top:8px;"></div>
+          <!-- Fallback video para BarcodeDetector -->
+          <video id="barcode-video" autoplay playsinline style="width:100%; height:auto; display:none; border-radius:8px; margin-top:8px;"></video>
+          <canvas id="barcode-canvas" style="display:none;"></canvas>
       </div>
       <button id="btn-escanear" onclick="toggleEscaneo()" class="btn-accion-principal">
         <i class="fa-solid fa-camera"></i> Iniciar Escáner
