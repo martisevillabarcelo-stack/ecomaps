@@ -98,62 +98,66 @@ const residuos = {
  * LOGIN / REGISTRO
  **********************/
 async function loginUsuario() {
-  const nombre = document.getElementById("nombreUsuario").value.trim();
-  const password = document.getElementById("passwordUsuario").value.trim();
-  const centroSeleccionado = document.getElementById("centroEducativo").value;
+  try {
+    const nombre = document.getElementById("nombreUsuario").value.trim();
+    const password = document.getElementById("passwordUsuario").value.trim();
+    const centroSeleccionado = document.getElementById("centroEducativo").value;
 
-  if (!nombre || !password) {
-    alert("Introduce usuario y contraseña");
-    return;
-  }
+    console.debug('loginUsuario invoked', { nombre, centroSeleccionado });
 
-  const clave = "eco_user_" + nombre;
-  let datos = JSON.parse(localStorage.getItem(clave));
-
-  if (datos) {
-    // Cuenta legacy: contraseña en texto plano -> migrar a hash
-    if (datos.password) {
-      if (datos.password !== password) {
-        alert("Contraseña incorrecta");
-        return;
-      }
-      // Migramos: generamos salt y hash, eliminamos campo password
-      const salt = crypto.getRandomValues(new Uint8Array(16));
-      const passwordHash = await hashPassword(password, salt);
-      datos.passwordHash = passwordHash;
-      datos.salt = bufToBase64(salt);
-      delete datos.password;
-      localStorage.setItem(clave, JSON.stringify(datos));
-    } else if (datos.passwordHash && datos.salt) {
-      // Cuenta nueva: comprobar hash
-      const saltBuf = base64ToBuf(datos.salt);
-      const hash = await hashPassword(password, saltBuf);
-      if (hash !== datos.passwordHash) {
-        alert("Contraseña incorrecta");
-        return;
-      }
-    } else {
-      // Formato inesperado
-      alert("Formato de cuenta desconocido. Regístrate de nuevo.");
+    if (!nombre || !password) {
+      alert("Introduce usuario y contraseña");
       return;
     }
 
-    // Si ya existe el usuario pero ahora selecciona un centro, actualizarlo
-    if (centroSeleccionado && !datos.centro) {
-      datos.centro = centroSeleccionado;
-      localStorage.setItem(clave, JSON.stringify(datos));
-    }
+    const clave = "eco_user_" + nombre;
+    let datos = JSON.parse(localStorage.getItem(clave));
+
+    if (datos) {
+      console.debug('Cuenta encontrada en localStorage', clave, datos);
+    // Cuenta legacy: contraseña en texto plano -> migrar a hash
+      if (datos.password) {
+        console.debug('Cuenta legacy con contraseña en texto plano, migrando...');
+        if (datos.password !== password) {
+          alert("Contraseña incorrecta");
+          return;
+        }
+        const salt = crypto.getRandomValues(new Uint8Array(16));
+        const passwordHash = await hashPassword(password, salt);
+        datos.passwordHash = passwordHash;
+        datos.salt = bufToBase64(salt);
+        delete datos.password;
+        localStorage.setItem(clave, JSON.stringify(datos));
+        console.debug('Migración completada para', clave);
+      } else if (datos.passwordHash && datos.salt) {
+        const saltBuf = base64ToBuf(datos.salt);
+        const hash = await hashPassword(password, saltBuf);
+        if (hash !== datos.passwordHash) {
+          console.debug('Hash mismatch', { provided: hash, stored: datos.passwordHash });
+          alert("Contraseña incorrecta");
+          return;
+        }
+      } else {
+        console.debug('Formato de cuenta inesperado', datos);
+        alert("Formato de cuenta desconocido. Regístrate de nuevo.");
+        return;
+      }
+
+      if (centroSeleccionado && !datos.centro) {
+        datos.centro = centroSeleccionado;
+        localStorage.setItem(clave, JSON.stringify(datos));
+      }
   } else {
     // Registro: guardamos salt + hash y ciframos el nombre dentro del objeto
-    if (!centroSeleccionado) {
-      alert("Por favor, selecciona tu centro educativo");
-      return;
-    }
-    const salt = crypto.getRandomValues(new Uint8Array(16));
-    const passwordHash = await hashPassword(password, salt);
-    const nombreEnc = await encryptTextAESGCM(nombre);
-    datos = { passwordHash, salt: bufToBase64(salt), username_enc: nombreEnc, co2: 0, residuos: 0, codigosUsados: [], centro: centroSeleccionado };
-    localStorage.setItem(clave, JSON.stringify(datos));
+      if (!centroSeleccionado) {
+        alert("Por favor, selecciona tu centro educativo");
+        return;
+      }
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const passwordHash = await hashPassword(password, salt);
+      const nombreEnc = await encryptTextAESGCM(nombre);
+      datos = { passwordHash, salt: bufToBase64(salt), username_enc: nombreEnc, co2: 0, residuos: 0, codigosUsados: [], centro: centroSeleccionado };
+      localStorage.setItem(clave, JSON.stringify(datos));
   }
 
   usuario = nombre;
@@ -166,11 +170,37 @@ async function loginUsuario() {
   actualizarRankingCentros();
   actualizarEstadisticasGlobales();
   obtenerUbicacion();
+    console.debug('Login successful for', usuario);
+  } catch (e) {
+    console.error('loginUsuario error:', e);
+    alert('Error al iniciar sesión: ' + (e && e.message ? e.message : 'ver consola'));
+  }
 }
 
 /**********************
  * CARGAR / GUARDAR
  **********************/
+// Muestra una curiosidad en la pantalla de inicio y en el perfil.
+function mostrarCuriosidadInicio() {
+  // Si ya existe un array global `curiosidades` (definido en index.html), lo usamos.
+  const pool = (typeof curiosidades !== 'undefined' && Array.isArray(curiosidades) && curiosidades.length) ? curiosidades : [
+    "Reciclar una lata de aluminio ahorra energía suficiente para usar una TV durante 3 horas.",
+    "El vidrio puede reciclarse infinitamente sin perder calidad.",
+    "Reciclar papel reduce la deforestación y ahorra agua.",
+    "El plástico reciclado puede convertirse en ropa o muebles.",
+    "Reciclar 1 kg de papel ahorra más de 1 kg de CO₂."
+  ];
+
+  const indice = Math.floor(Math.random() * pool.length);
+  const texto = pool[indice];
+
+  const elInicio = document.getElementById('curiosidad-inicio');
+  if (elInicio) elInicio.textContent = texto;
+
+  const elPerfil = document.getElementById('curiosidad');
+  if (elPerfil) elPerfil.textContent = texto;
+}
+
 function cargarUsuario() {
   const datos = JSON.parse(localStorage.getItem("eco_user_" + usuario));
   if (!datos) return;
@@ -1198,6 +1228,18 @@ function cerrarSesion() {
   const elPerfil = document.getElementById("curiosidad");
   if (elPerfil) elPerfil.textContent = curiosidades[indice];
 }
+
+// Registrar listener estable para el botón de búsqueda (evita problemas de type/submit)
+document.addEventListener('DOMContentLoaded', () => {
+  const btnBuscar = document.getElementById('btn-buscar');
+  if (btnBuscar) {
+    btnBuscar.addEventListener('click', buscarResiduo);
+  }
+  const btnLogin = document.getElementById('btn-login');
+  if (btnLogin) {
+    btnLogin.addEventListener('click', loginUsuario);
+  }
+});
 
 /**********************
  * ACTUALIZAR NIVEL MINI (INICIO)
